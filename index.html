@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Newest Members</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f172a;
+      --line: rgba(148, 163, 184, 0.2);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --gold: #fbbf24;
+      --blue: #60a5fa;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(96, 165, 250, 0.18), transparent 34%),
+        linear-gradient(180deg, #0b1120, var(--bg));
+      color: var(--text);
+      padding: 20px;
+    }
+
+    .wrap {
+      width: min(100%, 420px);
+      margin: 0 auto;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.9));
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(251, 191, 36, 0.14);
+      color: #fde68a;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      line-height: 1.05;
+    }
+
+    .sub {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .member-card {
+      display: grid;
+      grid-template-columns: 62px 1fr;
+      gap: 14px;
+      align-items: center;
+      padding: 14px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.94), rgba(15, 23, 42, 0.94));
+      border: 1px solid var(--line);
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .avatar-wrap {
+      width: 62px;
+      height: 62px;
+      border-radius: 18px;
+      overflow: hidden;
+      background: rgba(96, 165, 250, 0.14);
+      border: 1px solid rgba(96, 165, 250, 0.18);
+      display: grid;
+      place-items: center;
+    }
+
+    .avatar-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .avatar-fallback {
+      color: white;
+      font-weight: 800;
+      font-size: 22px;
+    }
+
+    .member-copy h2 {
+      margin: 2px 0 6px;
+      font-size: 20px;
+      line-height: 1.1;
+    }
+
+    .member-copy p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .member-topline {
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .footer {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .empty-state {
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="eyebrow">Live Club Widget</div>
+    <h1>Newest Members</h1>
+    <p class="sub">The 3 newest joins for <strong>infinitlegend</strong>.</p>
+    <section class="list">
+      
+    <a class="member-card" href="https://www.chess.com/member/superdumbgm" target="_blank" rel="noopener noreferrer">
+      <div class="avatar-wrap">
+        <div class="avatar-fallback" aria-hidden="true">S</div>
+      </div>
+      <div class="member-copy">
+        <div class="member-topline">Newest join</div>
+        <h2>SUPERDUMBGM</h2>
+        <p>Joined May 1, 2026</p>
+      </div>
+    </a>
+  
+
+    <a class="member-card" href="https://www.chess.com/member/voidmasters-federation" target="_blank" rel="noopener noreferrer">
+      <div class="avatar-wrap">
+        <div class="avatar-fallback" aria-hidden="true">VF</div>
+      </div>
+      <div class="member-copy">
+        <div class="member-topline">#2 newest join</div>
+        <h2>Voidmasters-Federation</h2>
+        <p>Joined Apr 30, 2026</p>
+      </div>
+    </a>
+  
+
+    <a class="member-card" href="https://www.chess.com/member/silent_nuke1" target="_blank" rel="noopener noreferrer">
+      <div class="avatar-wrap">
+        <div class="avatar-fallback" aria-hidden="true">SN</div>
+      </div>
+      <div class="member-copy">
+        <div class="member-topline">#3 newest join</div>
+        <h2>silent_nuke1</h2>
+        <p>Joined Apr 23, 2026</p>
+      </div>
+    </a>
+  
+    </section>
+    <div class="footer">
+      Updated May 1, 2026, 2:58 PM. Source: authenticated ClubMemberSearchService.
+    </div>
+  </main>
+</body>
+</html>
