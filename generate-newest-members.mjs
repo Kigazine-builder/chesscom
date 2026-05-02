@@ -364,10 +364,12 @@ function renderPage({ title, clubSlug, members, sourceLabel }) {
       </div>
     `;
 
-  const updatedAt = new Date().toLocaleString("en-US", {
+  const updatedAtDate = new Date();
+  const updatedAt = updatedAtDate.toLocaleString("en-US", {
     dateStyle: "medium",
     timeStyle: "short"
   });
+  const updatedAtIso = updatedAtDate.toISOString();
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -514,6 +516,12 @@ function renderPage({ title, clubSlug, members, sourceLabel }) {
       color: var(--muted);
       line-height: 1.5;
     }
+
+    .refresh-timer {
+      margin-top: 8px;
+      color: var(--text);
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -526,8 +534,43 @@ function renderPage({ title, clubSlug, members, sourceLabel }) {
     </section>
     <div class="footer">
       Updated ${escapeHtml(updatedAt)}. Source: ${escapeHtml(sourceLabel)}.
+      <div class="refresh-timer" data-refresh-timer data-last-updated="${escapeHtml(updatedAtIso)}">
+        Refreshes about every 5 minutes.
+      </div>
     </div>
   </main>
+  <script>
+    const timerNode = document.querySelector("[data-refresh-timer]");
+
+    if (timerNode) {
+      const updatedAtValue = timerNode.getAttribute("data-last-updated");
+      const updatedAtMs = Date.parse(updatedAtValue || "");
+      const refreshIntervalMs = 5 * 60 * 1000;
+
+      const renderTimer = () => {
+        if (!Number.isFinite(updatedAtMs)) {
+          timerNode.textContent = "Refreshes about every 5 minutes.";
+          return;
+        }
+
+        const nextRefreshMs = updatedAtMs + refreshIntervalMs;
+        const remainingMs = nextRefreshMs - Date.now();
+
+        if (remainingMs <= 0) {
+          timerNode.textContent = "Refresh window reached. Reload soon for the newest data.";
+          return;
+        }
+
+        const totalSeconds = Math.ceil(remainingMs / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        timerNode.textContent = "Next refresh window in " + minutes + ":" + String(seconds).padStart(2, "0") + ".";
+      };
+
+      renderTimer();
+      window.setInterval(renderTimer, 1000);
+    }
+  </script>
 </body>
 </html>`;
 }
