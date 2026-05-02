@@ -11,7 +11,7 @@ This project generates a small HTML page showing the newest members of a Chess.c
 
 ## Quick Start
 
-1. Open [`club.config.json`](/Users/ethan/Desktop/chess-club-newest-members/club.config.json) and set your real club slug.
+1. Open `club.config.json` and set your real club slug.
 2. If the public API does not work for your club, set a logged-in cookie first:
 
 ```bash
@@ -27,7 +27,7 @@ node generate-newest-members.mjs
 
 4. Commit and push this folder to a GitHub repo.
 5. In GitHub, add a repository secret named `CHESS_COOKIE` with your current Chess.com cookie header value if your club requires authenticated access.
-6. If your club needs the authenticated service fallback, keep `clubUuid` set in [`club.config.json`](/Users/ethan/Desktop/chess-club-newest-members/club.config.json).
+6. If your club needs the authenticated service fallback, keep `clubUuid` set in `club.config.json`.
 7. Enable Pages from the `main` branch and `/docs` folder.
 8. Run the `Update newest members widget` workflow once, then use the Pages URL as your hosted widget page.
 
