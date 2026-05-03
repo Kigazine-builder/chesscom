@@ -139,6 +139,21 @@ function parseJoinedLabel(label = "") {
   return Math.floor(Date.UTC(year, monthIndex, day) / 1000);
 }
 
+function collectMember(byUsername, username, joined, source) {
+  const normalizedUsername = String(username || "").trim();
+  const normalizedJoined = Number(joined || 0);
+  if (!normalizedUsername || normalizedJoined <= 0) return;
+
+  const existing = byUsername.get(normalizedUsername);
+  if (!existing || normalizedJoined > existing.joined) {
+    byUsername.set(normalizedUsername, {
+      username: normalizedUsername,
+      joined: normalizedJoined,
+      source
+    });
+  }
+}
+
 function parseMembersFromHtml(html) {
   const normalized = String(html || "");
   if (!normalized) return [];
@@ -147,34 +162,55 @@ function parseMembersFromHtml(html) {
     throw new Error("Chess.com redirected to login. Add a fresh CHESS_COOKIE before running the generator.");
   }
 
-  const segments = normalized.split(/https:\/\/www\.chess\.com\/member\//i);
-  const members = [];
+  const byUsername = new Map();
+  const memberUrlMatches = normalized.matchAll(
+    /https?:\/\/www\.chess\.com\/member\/([a-z0-9_-]+)/gi
+  );
 
-  for (let index = 1; index < segments.length; index += 1) {
-    const segment = segments[index];
-    const usernameMatch = segment.match(/^([a-z0-9_-]+)/i);
-    if (!usernameMatch) continue;
-
-    const username = usernameMatch[1];
-    const windowText = normalized.slice(
-      normalized.indexOf(`https://www.chess.com/member/${username}`),
-      normalized.indexOf(`https://www.chess.com/member/${username}`) + 2500
-    );
+  for (const match of memberUrlMatches) {
+    const username = match[1];
+    const startIndex = match.index ?? 0;
+    const windowText = normalized.slice(startIndex, startIndex + 5000);
     const joinedMatch = windowText.match(/Joined\s+[A-Za-z]{3}\s+\d{1,2},\s+\d{4}/i);
     if (!joinedMatch) continue;
 
-    members.push({
-      username,
-      joined: parseJoinedLabel(joinedMatch[0]),
-      source: "members_page"
-    });
+    collectMember(byUsername, username, parseJoinedLabel(joinedMatch[0]), "members_page");
   }
 
-  const byUsername = new Map();
-  for (const member of members) {
-    const existing = byUsername.get(member.username);
-    if (!existing || member.joined > existing.joined) {
-      byUsername.set(member.username, member);
+  const jsonPatterns = [
+    /"username"\s*:\s*"([a-z0-9_-]+)".{0,800}?"joinedAt"\s*:\s*"([^"]+)"/gis,
+    /"joinedAt"\s*:\s*"([^"]+)".{0,800}?"username"\s*:\s*"([a-z0-9_-]+)"/gis,
+    /"username"\s*:\s*"([a-z0-9_-]+)".{0,800}?"joined"\s*:\s*(\d{9,})/gis,
+    /"joined"\s*:\s*(\d{9,}).{0,800}?"username"\s*:\s*"([a-z0-9_-]+)"/gis,
+    /\\\/member\\\/([a-z0-9_-]+)".{0,800}?"joinedAt"\s*:\s*"([^"]+)"/gis,
+    /"joinedDate"\s*:\s*"([^"]+)".{0,800}?"username"\s*:\s*"([a-z0-9_-]+)"/gis
+  ];
+
+  for (const pattern of jsonPatterns) {
+    for (const match of normalized.matchAll(pattern)) {
+      const first = match[1];
+      const second = match[2];
+
+      if (!first || !second) continue;
+
+      if (/^\d{9,}$/.test(second)) {
+        collectMember(byUsername, first, Number(second), "members_page_json");
+        continue;
+      }
+
+      if (/^\d{9,}$/.test(first)) {
+        collectMember(byUsername, second, Number(first), "members_page_json");
+        continue;
+      }
+
+      const firstTime = parseIsoDateToUnixSeconds(first);
+      const secondTime = parseIsoDateToUnixSeconds(second);
+
+      if (firstTime > 0 && /^[a-z0-9_-]+$/i.test(second)) {
+        collectMember(byUsername, second, firstTime, "members_page_json");
+      } else if (secondTime > 0 && /^[a-z0-9_-]+$/i.test(first)) {
+        collectMember(byUsername, first, secondTime, "members_page_json");
+      }
     }
   }
 
