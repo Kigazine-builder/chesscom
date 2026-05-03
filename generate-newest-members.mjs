@@ -128,7 +128,7 @@ function stripTags(text = "") {
 }
 
 function parseJoinedLabel(label = "") {
-  const match = label.match(/Joined\s+([A-Za-z]{3})\s+(\d{1,2}),\s+(\d{4})/i);
+  const match = label.match(/Joined(?:\s+(?:on|in))?\s+([A-Za-z]{3,9})\s+(\d{1,2}),\s+(\d{4})/i);
   if (!match) return 0;
 
   const monthIndex = MONTH_LOOKUP[match[1].slice(0, 3).toLowerCase()];
@@ -171,7 +171,7 @@ function parseMembersFromHtml(html) {
     const username = match[1];
     const startIndex = match.index ?? 0;
     const windowText = normalized.slice(startIndex, startIndex + 5000);
-    const joinedMatch = windowText.match(/Joined\s+[A-Za-z]{3}\s+\d{1,2},\s+\d{4}/i);
+    const joinedMatch = windowText.match(/Joined(?:\s+(?:on|in))?\s+[A-Za-z]{3,9}\s+\d{1,2},\s+\d{4}/i);
     if (!joinedMatch) continue;
 
     collectMember(byUsername, username, parseJoinedLabel(joinedMatch[0]), "members_page");
@@ -301,18 +301,31 @@ async function loadNewestMembers(config) {
     failures.push("clubUuid is missing, so the authenticated ClubMemberSearchService fallback was skipped");
   }
 
-  const html = await fetchText(config.membersPageUrl, cookie);
-  const members = parseMembersFromHtml(html).slice(0, config.count);
-  if (!members.length) {
-    throw new Error(
-      `Authenticated fallbacks failed (${failures.join(" | ")}). The members page loaded, but no joined member cards could be parsed.`
-    );
+  const pageUrls = [
+    config.membersPageUrl,
+    config.membersPageUrl.replace("/clubs/members/", "/clubs/about/")
+  ].filter((url, index, self) => url && self.indexOf(url) === index);
+
+  for (const pageUrl of pageUrls) {
+    try {
+      const html = await fetchText(pageUrl, cookie);
+      const members = parseMembersFromHtml(html).slice(0, config.count);
+      if (members.length) {
+        return {
+          members,
+          sourceLabel: pageUrl.includes("/clubs/about/")
+            ? "authenticated Chess.com club about page"
+            : "authenticated Chess.com members page"
+        };
+      }
+    } catch (error) {
+      failures.push(error instanceof Error ? error.message : String(error));
+    }
   }
 
-  return {
-    members,
-    sourceLabel: "authenticated Chess.com members page"
-  };
+  throw new Error(
+    `Authenticated fallbacks failed (${failures.join(" | ")}). The club pages loaded, but no joined member cards could be parsed.`
+  );
 }
 
 async function enrichMember(member) {
