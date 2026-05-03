@@ -546,6 +546,16 @@ function renderPage({ title, clubSlug, members, sourceLabel }) {
       const updatedAtValue = timerNode.getAttribute("data-last-updated");
       const updatedAtMs = Date.parse(updatedAtValue || "");
       const refreshIntervalMs = 5 * 60 * 1000;
+      let reloadScheduled = false;
+
+      const reloadWithCacheBust = () => {
+        if (reloadScheduled) return;
+        reloadScheduled = true;
+
+        const url = new URL(window.location.href);
+        url.searchParams.set("refresh", String(Date.now()));
+        window.location.replace(url.toString());
+      };
 
       const renderTimer = () => {
         if (!Number.isFinite(updatedAtMs)) {
@@ -557,7 +567,8 @@ function renderPage({ title, clubSlug, members, sourceLabel }) {
         const remainingMs = nextRefreshMs - Date.now();
 
         if (remainingMs <= 0) {
-          timerNode.textContent = "Refresh window reached. Reload soon for the newest data.";
+          timerNode.textContent = "Refreshing now for the newest data.";
+          window.setTimeout(reloadWithCacheBust, 1500);
           return;
         }
 
