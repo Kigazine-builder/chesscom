@@ -238,12 +238,16 @@ function normalizeServiceMembers(payload) {
 
 function buildClubMemberQueryPayload(config, newestFirst = true) {
   return {
-    pagination: {},
+    pagination: {
+      pageSize: 25
+    },
     query: {
       orderBy: [
         {
-          option: "CLUB_MEMBERS_ORDER_BY_OPTION_ALPHABETICAL",
-          order: "CLUB_MEMBERS_ORDER_ASC"
+          option: newestFirst
+            ? "CLUB_MEMBERS_ORDER_BY_OPTION_JOINED_AT"
+            : "CLUB_MEMBERS_ORDER_BY_OPTION_ALPHABETICAL",
+          order: newestFirst ? "CLUB_MEMBERS_ORDER_DESC" : "CLUB_MEMBERS_ORDER_ASC"
         }
       ],
       query: {
@@ -281,6 +285,23 @@ async function loadNewestMembers(config) {
   }
 
   if (config.clubUuid) {
+    try {
+      const servicePayload = await postJson(
+        `${CHESS_BASE_URL}/service/clubs/chesscom.clubs.v3.ClubMemberSearchService/QueryClubMembers`,
+        buildClubMemberQueryPayload(config, true),
+        cookie
+      );
+      const members = normalizeServiceMembers(servicePayload).slice(0, config.count);
+      if (members.length) {
+        return {
+          members,
+          sourceLabel: "authenticated ClubMemberSearchService"
+        };
+      }
+    } catch (error) {
+      failures.push(error instanceof Error ? error.message : String(error));
+    }
+
     try {
       const servicePayload = await postJson(
         `${CHESS_BASE_URL}/service/clubs/chesscom.clubs.v3.ClubMemberSearchService/QueryClubMembers`,
@@ -674,6 +695,60 @@ function renderPage({ title, clubSlug, members, sourceLabel }) {
       font-size: 13px;
       line-height: 1.45;
     }
+
+    .sidebar-grid {
+      display: grid;
+      gap: 12px;
+      margin: 16px 0;
+    }
+
+    .mini-panel {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.82);
+    }
+
+    .mini-panel h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #f8fafc;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .mini-panel ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .quick-actions {
+      display: grid;
+      gap: 8px;
+    }
+
+    .quick-action {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(96, 165, 250, 0.18);
+      background: rgba(2, 6, 23, 0.35);
+      color: var(--text);
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .quick-action span {
+      color: var(--blue);
+      font-size: 16px;
+      line-height: 1;
+    }
   </style>
 </head>
 <body>
@@ -697,6 +772,33 @@ function renderPage({ title, clubSlug, members, sourceLabel }) {
       <div class="stat">
         <strong>0</strong>
         <span>Events played</span>
+      </div>
+    </section>
+
+    <section class="sidebar-grid" aria-label="More club info">
+      <div class="mini-panel">
+        <h3>What to do</h3>
+        <ul>
+          <li>Play a daily match.</li>
+          <li>Drop a forum reply.</li>
+          <li>Invite one active player.</li>
+        </ul>
+      </div>
+      <div class="mini-panel">
+        <h3>Club focus</h3>
+        <ul>
+          <li>Riddles and puzzles.</li>
+          <li>Friendly competition.</li>
+          <li>Building an active crew.</li>
+        </ul>
+      </div>
+      <div class="mini-panel">
+        <h3>Quick actions</h3>
+        <div class="quick-actions">
+          <a class="quick-action" href="https://www.chess.com/clubs/events/infinitlegend" target="_blank" rel="noopener noreferrer">Club events <span aria-hidden="true">›</span></a>
+          <a class="quick-action" href="https://www.chess.com/leaderboard/daily?group=882347" target="_blank" rel="noopener noreferrer">Leaderboard <span aria-hidden="true">›</span></a>
+          <a class="quick-action" href="https://www.chess.com/clubs/about/infinitlegend" target="_blank" rel="noopener noreferrer">About club <span aria-hidden="true">›</span></a>
+        </div>
       </div>
     </section>
 
