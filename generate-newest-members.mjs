@@ -8,868 +8,742 @@ const __dirname = path.dirname(__filename);
 const CONFIG_PATH = path.join(__dirname, "club.config.json");
 const OUTPUT_DIR = path.join(__dirname, "docs");
 const OUTPUT_PATH = path.join(OUTPUT_DIR, "index.html");
-const CHESS_BASE_URL = "https://www.chess.com";
-const MEMBER_URL_RE = /https:\/\/www\.chess\.com\/member\/([a-z0-9_-]+)/i;
-const MONTH_LOOKUP = {
-  jan: 0,
-  feb: 1,
-  mar: 2,
-  apr: 3,
-  may: 4,
-  jun: 5,
-  jul: 6,
-  aug: 7,
-  sep: 8,
-  oct: 9,
-  nov: 10,
-  dec: 11
-};
-
-async function loadConfig() {
-  const raw = await readFile(CONFIG_PATH, "utf8");
-  const parsed = JSON.parse(raw);
-
-  const clubSlug = String(parsed.clubSlug || "").trim();
-  return {
-    clubSlug,
-    clubUuid: String(parsed.clubUuid || "").trim(),
-    title: String(parsed.title || "Newest Members").trim(),
-    count: Math.max(1, Number(parsed.count || 3)),
-    membersPageUrl: String(
-      parsed.membersPageUrl || `${CHESS_BASE_URL}/clubs/members/${clubSlug}`
-    ).trim()
-  };
-}
-
-function getRequestHeaders(cookie = "") {
-  return {
-    "User-Agent": "chess-club-newest-members-generator/1.0",
-    ...(cookie ? { Cookie: cookie } : {})
-  };
-}
-
-async function fetchJson(url) {
-  const response = await fetch(url, {
-    headers: getRequestHeaders()
-  });
-
-  if (!response.ok) {
-    throw new Error(`Request failed for ${url}: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
-}
-
-async function fetchText(url, cookie = "") {
-  const response = await fetch(url, {
-    headers: getRequestHeaders(cookie)
-  });
-
-  if (!response.ok) {
-    throw new Error(`Request failed for ${url}: ${response.status} ${response.statusText}`);
-  }
-
-  return response.text();
-}
-
-async function postJson(url, body, cookie = "") {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      ...getRequestHeaders(cookie),
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
-
-  if (!response.ok) {
-    throw new Error(`Request failed for ${url}: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
-}
-
-function dedupeMembers(payload) {
-  const buckets = [
-    ...(payload?.weekly || []),
-    ...(payload?.monthly || []),
-    ...(payload?.all_time || [])
-  ];
-
-  const byUsername = new Map();
-  for (const member of buckets) {
-    const username = String(member?.username || "").trim();
-    if (!username) continue;
-
-    const joined = Number(member?.joined || 0);
-    const existing = byUsername.get(username);
-    if (!existing || joined > existing.joined) {
-      byUsername.set(username, { username, joined, source: "public_api" });
-    }
-  }
-
-  return Array.from(byUsername.values())
-    .sort((a, b) => b.joined - a.joined);
-}
-
-function decodeHtml(text = "") {
-  return String(text)
-    .replaceAll("&amp;", "&")
-    .replaceAll("&quot;", "\"")
-    .replaceAll("&#39;", "'")
-    .replaceAll("&lt;", "<")
-    .replaceAll("&gt;", ">");
-}
-
-function stripTags(text = "") {
-  return decodeHtml(String(text).replace(/<[^>]*>/g, " "))
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function parseJoinedLabel(label = "") {
-  const match = label.match(/Joined(?:\s+(?:on|in))?\s+([A-Za-z]{3,9})\s+(\d{1,2}),\s+(\d{4})/i);
-  if (!match) return 0;
-
-  const monthIndex = MONTH_LOOKUP[match[1].slice(0, 3).toLowerCase()];
-  const day = Number(match[2]);
-  const year = Number(match[3]);
-  if (!Number.isInteger(monthIndex) || !day || !year) return 0;
-
-  return Math.floor(Date.UTC(year, monthIndex, day) / 1000);
-}
-
-function collectMember(byUsername, username, joined, source) {
-  const normalizedUsername = String(username || "").trim();
-  const normalizedJoined = Number(joined || 0);
-  if (!normalizedUsername || normalizedJoined <= 0) return;
-
-  const existing = byUsername.get(normalizedUsername);
-  if (!existing || normalizedJoined > existing.joined) {
-    byUsername.set(normalizedUsername, {
-      username: normalizedUsername,
-      joined: normalizedJoined,
-      source
-    });
-  }
-}
-
-function parseMembersFromHtml(html) {
-  const normalized = String(html || "");
-  if (!normalized) return [];
-
-  if (/Login - Chess\.com/i.test(normalized) || /id="_target_path"/i.test(normalized)) {
-    throw new Error("Chess.com redirected to login. Add a fresh CHESS_COOKIE before running the generator.");
-  }
-
-  const byUsername = new Map();
-  const memberUrlMatches = normalized.matchAll(
-    /https?:\/\/www\.chess\.com\/member\/([a-z0-9_-]+)/gi
-  );
-
-  for (const match of memberUrlMatches) {
-    const username = match[1];
-    const startIndex = match.index ?? 0;
-    const windowText = normalized.slice(startIndex, startIndex + 5000);
-    const joinedMatch = windowText.match(/Joined(?:\s+(?:on|in))?\s+[A-Za-z]{3,9}\s+\d{1,2},\s+\d{4}/i);
-    if (!joinedMatch) continue;
-
-    collectMember(byUsername, username, parseJoinedLabel(joinedMatch[0]), "members_page");
-  }
-
-  const jsonPatterns = [
-    /"username"\s*:\s*"([a-z0-9_-]+)".{0,800}?"joinedAt"\s*:\s*"([^"]+)"/gis,
-    /"joinedAt"\s*:\s*"([^"]+)".{0,800}?"username"\s*:\s*"([a-z0-9_-]+)"/gis,
-    /"username"\s*:\s*"([a-z0-9_-]+)".{0,800}?"joined"\s*:\s*(\d{9,})/gis,
-    /"joined"\s*:\s*(\d{9,}).{0,800}?"username"\s*:\s*"([a-z0-9_-]+)"/gis,
-    /\\\/member\\\/([a-z0-9_-]+)".{0,800}?"joinedAt"\s*:\s*"([^"]+)"/gis,
-    /"joinedDate"\s*:\s*"([^"]+)".{0,800}?"username"\s*:\s*"([a-z0-9_-]+)"/gis
-  ];
-
-  for (const pattern of jsonPatterns) {
-    for (const match of normalized.matchAll(pattern)) {
-      const first = match[1];
-      const second = match[2];
-
-      if (!first || !second) continue;
-
-      if (/^\d{9,}$/.test(second)) {
-        collectMember(byUsername, first, Number(second), "members_page_json");
-        continue;
-      }
-
-      if (/^\d{9,}$/.test(first)) {
-        collectMember(byUsername, second, Number(first), "members_page_json");
-        continue;
-      }
-
-      const firstTime = parseIsoDateToUnixSeconds(first);
-      const secondTime = parseIsoDateToUnixSeconds(second);
-
-      if (firstTime > 0 && /^[a-z0-9_-]+$/i.test(second)) {
-        collectMember(byUsername, second, firstTime, "members_page_json");
-      } else if (secondTime > 0 && /^[a-z0-9_-]+$/i.test(first)) {
-        collectMember(byUsername, first, secondTime, "members_page_json");
-      }
-    }
-  }
-
-  return Array.from(byUsername.values())
-    .filter(member => member.joined > 0)
-    .sort((a, b) => b.joined - a.joined);
-}
-
-function parseIsoDateToUnixSeconds(value = "") {
-  const time = Date.parse(String(value || ""));
-  return Number.isFinite(time) ? Math.floor(time / 1000) : 0;
-}
-
-function normalizeServiceMembers(payload) {
-  const members = Array.isArray(payload?.members) ? payload.members : [];
-  return members
-    .map(member => ({
-      username: member?.userView?.username || "",
-      joined: parseIsoDateToUnixSeconds(member?.joinedAt),
-      source: "club_member_service"
-    }))
-    .filter(member => member.username && member.joined > 0)
-    .sort((a, b) => b.joined - a.joined);
-}
-
-function buildClubMemberQueryPayload(config, newestFirst = true) {
-  return {
-    pagination: {
-      pageSize: 25
-    },
-    query: {
-      orderBy: [
-        {
-          option: newestFirst
-            ? "CLUB_MEMBERS_ORDER_BY_OPTION_JOINED_AT"
-            : "CLUB_MEMBERS_ORDER_BY_OPTION_ALPHABETICAL",
-          order: newestFirst ? "CLUB_MEMBERS_ORDER_DESC" : "CLUB_MEMBERS_ORDER_ASC"
-        }
-      ],
-      query: {
-        clubUuid: config.clubUuid,
-        bannedStatus: "BANNED_STATUS_NOT_BANNED",
-        closedStatus: "CLOSED_STATUS_NOT_CLOSED"
-      }
-    }
-  };
-}
-
-async function loadNewestMembers(config) {
-  const cookie = String(process.env.CHESS_COOKIE || "").trim();
-  const failures = [];
-
-  try {
-    const membersPayload = await fetchJson(
-      `${CHESS_BASE_URL}/pub/club/${encodeURIComponent(config.clubSlug)}/members`
-    );
-    const members = dedupeMembers(membersPayload).slice(0, config.count);
-    if (members.length) {
-      return {
-        members,
-        sourceLabel: "Chess.com public API"
-      };
-    }
-  } catch (error) {
-    failures.push(error instanceof Error ? error.message : String(error));
-  }
-
-  if (!cookie) {
-    throw new Error(
-      `Public API lookup failed (${failures.join(" | ")}). Add CHESS_COOKIE to use the logged-in members page.`
-    );
-  }
-
-  if (config.clubUuid) {
-    try {
-      const servicePayload = await postJson(
-        `${CHESS_BASE_URL}/service/clubs/chesscom.clubs.v3.ClubMemberSearchService/QueryClubMembers`,
-        buildClubMemberQueryPayload(config, true),
-        cookie
-      );
-      const members = normalizeServiceMembers(servicePayload).slice(0, config.count);
-      if (members.length) {
-        return {
-          members,
-          sourceLabel: "authenticated ClubMemberSearchService"
-        };
-      }
-    } catch (error) {
-      failures.push(error instanceof Error ? error.message : String(error));
-    }
-
-    try {
-      const servicePayload = await postJson(
-        `${CHESS_BASE_URL}/service/clubs/chesscom.clubs.v3.ClubMemberSearchService/QueryClubMembers`,
-        buildClubMemberQueryPayload(config, false),
-        cookie
-      );
-      const members = normalizeServiceMembers(servicePayload).slice(0, config.count);
-      if (members.length) {
-        return {
-          members,
-          sourceLabel: "authenticated ClubMemberSearchService"
-        };
-      }
-    } catch (error) {
-      failures.push(error instanceof Error ? error.message : String(error));
-    }
-  } else {
-    failures.push("clubUuid is missing, so the authenticated ClubMemberSearchService fallback was skipped");
-  }
-
-  const pageUrls = [
-    config.membersPageUrl,
-    config.membersPageUrl.replace("/clubs/members/", "/clubs/about/")
-  ].filter((url, index, self) => url && self.indexOf(url) === index);
-
-  for (const pageUrl of pageUrls) {
-    try {
-      const html = await fetchText(pageUrl, cookie);
-      const members = parseMembersFromHtml(html).slice(0, config.count);
-      if (members.length) {
-        return {
-          members,
-          sourceLabel: pageUrl.includes("/clubs/about/")
-            ? "authenticated Chess.com club about page"
-            : "authenticated Chess.com members page"
-        };
-      }
-    } catch (error) {
-      failures.push(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  throw new Error(
-    `Authenticated fallbacks failed (${failures.join(" | ")}). The club pages loaded, but no joined member cards could be parsed.`
-  );
-}
-
-async function enrichMember(member) {
-  const candidates = [
-    String(member.username || ""),
-    String(member.username || "").toLowerCase()
-  ].filter(Boolean);
-
-  for (const candidate of candidates) {
-    try {
-      const player = await fetchJson(`${CHESS_BASE_URL}/pub/player/${encodeURIComponent(candidate)}`);
-      return {
-        ...member,
-        avatar: player.avatar || "",
-        url: player.url || `${CHESS_BASE_URL}/member/${candidate}`,
-        displayName: player.username || member.username || candidate
-      };
-    } catch (error) {
-      // Try the next candidate casing before falling back to a simple profile link.
-    }
-  }
-
-  return {
-    ...member,
-    avatar: "",
-    url: `${CHESS_BASE_URL}/member/${String(member.username || "").toLowerCase()}`,
-    displayName: member.username || "Unknown member"
-  };
-}
-
-function formatJoined(unixSeconds) {
-  if (!unixSeconds) return "Joined date unavailable";
-  return new Date(unixSeconds * 1000).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric"
-  });
-}
-
-function getInitials(name = "") {
-  const clean = String(name || "").replace(/[^a-z0-9]+/gi, " ").trim();
-  const parts = clean.split(/\s+/).filter(Boolean).slice(0, 2);
-  if (!parts.length) return "C";
-  return parts.map(part => part[0].toUpperCase()).join("");
-}
-
-function renderMemberCard(member, index) {
-  const safeName = escapeHtml(member.displayName);
-  const safeUrl = escapeHtml(member.url);
-  const joinedLabel = escapeHtml(formatJoined(member.joined));
-  const positionLabel = index === 0 ? "Newest join" : `#${index + 1} newest join`;
-  const avatarMarkup = member.avatar
-    ? `<img src="${escapeHtml(member.avatar)}" alt="${safeName} avatar" class="avatar-image" />`
-    : `<div class="avatar-fallback" aria-hidden="true">${escapeHtml(getInitials(member.displayName))}</div>`;
-
-  return `
-    <a class="member-card" href="${safeUrl}" target="_blank" rel="noopener noreferrer">
-      <div class="avatar-wrap">
-        ${avatarMarkup}
-      </div>
-      <div class="member-copy">
-        <div class="member-topline">${escapeHtml(positionLabel)}</div>
-        <h2>${safeName}</h2>
-        <p>Joined ${joinedLabel}</p>
-      </div>
-    </a>
-  `;
-}
 
 function escapeHtml(text = "") {
   return String(text)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
-    .replaceAll("\"", "&quot;")
+    .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 }
 
-function renderPage({ title, clubSlug, members, sourceLabel }) {
-  const cards = members.length
-    ? members.map((member, index) => renderMemberCard(member, index)).join("\n")
-    : `
-      <div class="empty-state">
-        No member data is available right now.
-      </div>
-    `;
+function humanizeSlug(slug = "") {
+  return String(slug || "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, char => char.toUpperCase())
+    .trim();
+}
 
-  const updatedAtDate = new Date();
-  const updatedAt = updatedAtDate.toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  });
-  const updatedAtIso = updatedAtDate.toISOString();
+async function loadConfig() {
+  const raw = await readFile(CONFIG_PATH, "utf8");
+  const parsed = JSON.parse(raw);
+  const clubSlug = String(parsed.clubSlug || "").trim();
 
+  return {
+    clubSlug,
+    clubName: String(parsed.clubName || humanizeSlug(clubSlug) || "Chess Club").trim(),
+    title: String(parsed.title || "Newest Members").trim(),
+    count: Math.max(1, Number(parsed.count || 3))
+  };
+}
+
+function renderPage({ clubSlug, clubName, title, count }) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(clubName)} - Chess.com Club Members Widget" />
+  <title>${escapeHtml(clubName)} - Chess.com Widget</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌶️</text></svg>">
   <style>
-    :root {
-      color-scheme: dark;
-      --bg: #0f172a;
-      --line: rgba(148, 163, 184, 0.2);
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-      --gold: #fbbf24;
-      --blue: #60a5fa;
-      --green: #34d399;
-      --panel: rgba(30, 41, 59, 0.72);
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
-    * { box-sizing: border-box; }
+    :root {
+      --bg: #fff5f0;
+      --panel: #ffffff;
+      --panel-soft: #fff8f5;
+      --border: #f5c5b8;
+      --ink: #c73520;
+      --ink-soft: #9a2010;
+      --accent: #d93020;
+      --accent-2: #e85535;
+      --muted: rgba(154, 32, 16, 0.72);
+    }
 
     body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: "Segoe UI", Arial, sans-serif;
+      font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background:
-        radial-gradient(circle at top, rgba(96, 165, 250, 0.18), transparent 34%),
-        linear-gradient(180deg, #0b1120, var(--bg));
-      color: var(--text);
-      padding: 20px;
+        radial-gradient(circle at top, rgba(217, 48, 32, 0.08), transparent 30%),
+        linear-gradient(180deg, #fffaf7, var(--bg));
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 12px;
+      color: var(--ink);
     }
 
-    .wrap {
-      width: min(100%, 420px);
-      margin: 0 auto;
-      background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.9));
-      border: 1px solid var(--line);
-      border-radius: 24px;
-      padding: 18px;
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+    .nc-wrapper {
+      width: 100%;
+      max-width: 350px;
+      background: var(--bg);
+      border-radius: 18px;
+      padding: 12px;
     }
 
-    .eyebrow {
-      display: inline-block;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: rgba(251, 191, 36, 0.14);
-      color: #fde68a;
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+    .sec-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: "Fredoka One", cursive;
+      font-size: 14px;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+
+    .sec-label .dot {
+      width: 12px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .members-box {
+      background: var(--panel);
+      border-radius: 18px;
+      border: 2px solid var(--border);
+      padding: 12px;
+      min-height: 168px;
+      box-shadow: 0 8px 24px rgba(217, 48, 32, 0.08);
+    }
+
+    .club-mission {
+      padding: 12px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(217, 48, 32, 0.08), transparent 60%);
+      border: 1px solid rgba(245, 197, 184, 0.85);
       margin-bottom: 10px;
     }
 
-    h1 {
-      margin: 0 0 6px;
-      font-size: 30px;
-      line-height: 1.05;
-    }
-
-    .sub {
-      margin: 0 0 18px;
-      color: var(--muted);
-      line-height: 1.5;
-      font-size: 14px;
-    }
-
-    .mission {
-      display: grid;
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-
-    .mission-card {
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background:
-        linear-gradient(135deg, rgba(96, 165, 250, 0.16), transparent 54%),
-        var(--panel);
-    }
-
-    .mission-card h2,
+    .club-mission h2,
     .section-title {
-      margin: 0 0 8px;
-      color: #f8fafc;
-      font-size: 15px;
-      letter-spacing: 0.02em;
+      font-size: 12px;
       text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ink);
+      margin-bottom: 6px;
+      font-weight: 800;
     }
 
-    .mission-card p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 13px;
+    .club-mission p {
+      font-size: 12px;
       line-height: 1.45;
+      color: var(--muted);
     }
 
     .stats {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      margin-bottom: 16px;
+      gap: 8px;
+      margin-bottom: 10px;
     }
 
     .stat {
-      padding: 12px;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: rgba(15, 23, 42, 0.78);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel-soft);
+      padding: 10px;
     }
 
     .stat strong {
       display: block;
-      color: white;
+      font-family: "Fredoka One", cursive;
       font-size: 20px;
       line-height: 1;
+      color: var(--accent);
     }
 
     .stat span {
       display: block;
-      margin-top: 5px;
+      margin-top: 4px;
+      font-size: 11px;
       color: var(--muted);
-      font-size: 12px;
+      font-weight: 700;
     }
 
-    .quick-links {
-      display: grid;
-      gap: 9px;
-      margin: 16px 0;
+    .members-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
     }
 
-    .quick-link {
+    .member-item {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 10px;
-      padding: 12px 13px;
-      border: 1px solid rgba(96, 165, 250, 0.22);
-      border-radius: 16px;
-      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 14px;
+      background: var(--panel-soft);
+      border: 2px solid var(--border);
       text-decoration: none;
-      background: rgba(15, 23, 42, 0.82);
-    }
-
-    .quick-link span {
-      color: var(--blue);
-      font-size: 18px;
-      line-height: 1;
-    }
-
-    .list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .member-card {
-      display: grid;
-      grid-template-columns: 62px 1fr;
-      gap: 14px;
-      align-items: center;
-      padding: 14px;
-      border-radius: 18px;
-      background: linear-gradient(180deg, rgba(30, 41, 59, 0.94), rgba(15, 23, 42, 0.94));
-      border: 1px solid var(--line);
-      text-decoration: none;
-      color: inherit;
-    }
-
-    .member-card:hover,
-    .quick-link:hover {
-      border-color: rgba(96, 165, 250, 0.48);
-      transform: translateY(-1px);
-    }
-
-    .avatar-wrap {
-      width: 62px;
-      height: 62px;
-      border-radius: 18px;
+      transition: all 0.15s ease;
+      min-height: 44px;
       overflow: hidden;
-      background: rgba(96, 165, 250, 0.14);
-      border: 1px solid rgba(96, 165, 250, 0.18);
-      display: grid;
-      place-items: center;
+      cursor: pointer;
     }
 
-    .avatar-image {
-      width: 100%;
-      height: 100%;
+    .member-item:hover {
+      background: #fce8e0;
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 0 var(--accent);
+    }
+
+    .member-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
       object-fit: cover;
-      display: block;
+      flex-shrink: 0;
+      background: #fce8e0;
     }
 
     .avatar-fallback {
-      color: white;
-      font-weight: 800;
-      font-size: 22px;
-    }
-
-    .member-copy h2 {
-      margin: 2px 0 6px;
-      font-size: 20px;
-      line-height: 1.1;
-    }
-
-    .member-copy p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .member-topline {
-      color: var(--blue);
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .footer {
-      margin-top: 16px;
-      padding-top: 12px;
-      border-top: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .empty-state {
-      padding: 18px;
-      border-radius: 18px;
-      background: rgba(30, 41, 59, 0.9);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      line-height: 1.5;
-    }
-
-    .refresh-timer {
-      margin-top: 8px;
-      color: var(--text);
-      font-weight: 600;
-    }
-
-    .callout {
-      margin-top: 16px;
-      padding: 14px;
-      border: 1px solid rgba(52, 211, 153, 0.24);
-      border-radius: 18px;
-      background: rgba(6, 78, 59, 0.22);
-      color: #d1fae5;
-      font-size: 13px;
-      line-height: 1.45;
-    }
-
-    .sidebar-grid {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      background: #fce8e0;
       display: grid;
-      gap: 12px;
-      margin: 16px 0;
-    }
-
-    .mini-panel {
-      padding: 14px;
-      border-radius: 18px;
-      border: 1px solid var(--line);
-      background: rgba(15, 23, 42, 0.82);
-    }
-
-    .mini-panel h3 {
-      margin: 0 0 8px;
-      font-size: 14px;
-      color: #f8fafc;
-      text-transform: uppercase;
-      letter-spacing: 0.02em;
-    }
-
-    .mini-panel ul {
-      margin: 0;
-      padding-left: 18px;
-      color: var(--muted);
+      place-items: center;
+      flex-shrink: 0;
+      color: var(--accent);
+      font-family: "Fredoka One", cursive;
       font-size: 13px;
-      line-height: 1.55;
+    }
+
+    .member-info {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .member-name {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .member-meta {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      margin-top: 2px;
+      font-size: 10px;
+      font-weight: 700;
+      gap: 4px;
+      color: var(--muted);
+    }
+
+    .member-rating {
+      color: var(--ink-soft);
+      flex-shrink: 0;
+    }
+
+    .member-joined {
+      margin-left: auto;
+      color: var(--accent);
+      font-weight: 800;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .quick-actions {
       display: grid;
       gap: 8px;
+      margin-bottom: 12px;
     }
 
     .quick-action {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       gap: 10px;
       padding: 10px 12px;
       border-radius: 14px;
-      border: 1px solid rgba(96, 165, 250, 0.18);
-      background: rgba(2, 6, 23, 0.35);
-      color: var(--text);
+      background: #fff;
+      border: 2px solid var(--border);
+      color: var(--ink);
       text-decoration: none;
-      font-size: 13px;
+      font-size: 12px;
+      font-weight: 800;
+      transition: all 0.15s ease;
+    }
+
+    .quick-action:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 0 var(--accent);
     }
 
     .quick-action span {
-      color: var(--blue);
+      color: var(--accent);
       font-size: 16px;
       line-height: 1;
+    }
+
+    .member-item.loading {
+      pointer-events: none;
+    }
+
+    .skeleton-avatar,
+    .skeleton-name,
+    .skeleton-meta {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: nc-skeleton 1.5s infinite;
+    }
+
+    .skeleton-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .skeleton-name {
+      width: 60%;
+      height: 12px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+
+    .skeleton-meta {
+      width: 80%;
+      height: 10px;
+      border-radius: 5px;
+    }
+
+    @keyframes nc-skeleton {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .member-error,
+    .member-empty {
+      text-align: center;
+      padding: 24px 16px;
+    }
+
+    .error-icon,
+    .empty-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .error-message,
+    .empty-message {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-soft);
+      margin-bottom: 12px;
+      line-height: 1.45;
+    }
+
+    .retry-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      border-radius: 50px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border: none;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #8c1a10;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .retry-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 0 #8c1a10;
+    }
+
+    .retry-button:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #8c1a10;
+    }
+
+    .footer {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(245, 197, 184, 0.8);
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .refresh-meta {
+      margin-top: 6px;
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    @media (max-width: 400px) {
+      .member-joined {
+        display: none;
+      }
+
+      .nc-wrapper {
+        padding: 10px;
+      }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background:
+          radial-gradient(circle at top, rgba(255, 138, 128, 0.08), transparent 30%),
+          linear-gradient(180deg, #1f1b1a, #111111);
+        color: #ffd5cf;
+      }
+
+      :root {
+        --bg: #252525;
+        --panel: #2d2d2d;
+        --panel-soft: #2d2d2d;
+        --border: #4a4a4a;
+        --ink: #ff8a80;
+        --ink-soft: #ffab91;
+        --accent: #e8553a;
+        --accent-2: #f26c4f;
+        --muted: rgba(255, 171, 145, 0.8);
+      }
+
+      .member-item:hover,
+      .quick-action:hover {
+        background: #3d3d3d;
+        border-color: #e8553a;
+      }
+
+      .skeleton-avatar,
+      .skeleton-name,
+      .skeleton-meta {
+        background: linear-gradient(90deg, #2d2d2d 25%, #3d3d3d 50%, #2d2d2d 75%);
+        background-size: 200% 100%;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .member-item,
+      .retry-button,
+      .quick-action {
+        transition: none;
+      }
+
+      .skeleton-avatar,
+      .skeleton-name,
+      .skeleton-meta {
+        animation: none;
+      }
     }
   </style>
 </head>
 <body>
-  <main class="wrap">
-    <div class="eyebrow">InfinitLegend HQ</div>
-    <h1>Welcome, Legend</h1>
-    <p class="sub">Riddles, puzzles, daily games, friendly matches, and club challenges for active players.</p>
+  <div class="nc-wrapper">
+    <div class="sec-label">
+      <div class="dot"></div>
+      <span>${escapeHtml(clubName)} HQ</span>
+    </div>
 
-    <section class="mission" aria-label="Club mission">
-      <div class="mission-card">
+    <div class="members-box">
+      <div class="club-mission">
         <h2>Club Mission</h2>
-        <p>Stay active, invite good players, join events, and help build the most legendary Chess.com hangout.</p>
+        <p>Stay active, invite good players, join events, and keep the club legendary.</p>
       </div>
-    </section>
 
-    <section class="stats" aria-label="Club snapshot">
-      <div class="stat">
-        <strong>11</strong>
-        <span>Members</span>
-      </div>
-      <div class="stat">
-        <strong>0</strong>
-        <span>Events played</span>
-      </div>
-    </section>
-
-    <section class="sidebar-grid" aria-label="More club info">
-      <div class="mini-panel">
-        <h3>What to do</h3>
-        <ul>
-          <li>Play a daily match.</li>
-          <li>Drop a forum reply.</li>
-          <li>Invite one active player.</li>
-        </ul>
-      </div>
-      <div class="mini-panel">
-        <h3>Club focus</h3>
-        <ul>
-          <li>Riddles and puzzles.</li>
-          <li>Friendly competition.</li>
-          <li>Building an active crew.</li>
-        </ul>
-      </div>
-      <div class="mini-panel">
-        <h3>Quick actions</h3>
-        <div class="quick-actions">
-          <a class="quick-action" href="https://www.chess.com/clubs/events/infinitlegend" target="_blank" rel="noopener noreferrer">Club events <span aria-hidden="true">›</span></a>
-          <a class="quick-action" href="https://www.chess.com/leaderboard/daily?group=882347" target="_blank" rel="noopener noreferrer">Leaderboard <span aria-hidden="true">›</span></a>
-          <a class="quick-action" href="https://www.chess.com/clubs/about/infinitlegend" target="_blank" rel="noopener noreferrer">About club <span aria-hidden="true">›</span></a>
+      <div class="stats">
+        <div class="stat">
+          <strong id="memberCount">--</strong>
+          <span>Members</span>
+        </div>
+        <div class="stat">
+          <strong id="visibleCount">${Number(count)}</strong>
+          <span>Visible joins</span>
         </div>
       </div>
-    </section>
 
-    <div class="section-title">${escapeHtml(title)}</div>
-    <p class="sub">The ${members.length} newest joins for <strong>${escapeHtml(clubSlug)}</strong>.</p>
-    <section class="list">
-      ${cards}
-    </section>
+      <div class="quick-actions">
+        <a class="quick-action" href="https://www.chess.com/club/${encodeURIComponent(clubSlug)}" target="_blank" rel="noopener noreferrer">Club page <span aria-hidden="true">›</span></a>
+        <a class="quick-action" href="https://www.chess.com/clubs/members/${encodeURIComponent(clubSlug)}" target="_blank" rel="noopener noreferrer">Members page <span aria-hidden="true">›</span></a>
+        <a class="quick-action" href="https://www.chess.com/clubs/about/${encodeURIComponent(clubSlug)}" target="_blank" rel="noopener noreferrer">About club <span aria-hidden="true">›</span></a>
+      </div>
 
-    <section class="quick-links" aria-label="Quick club links">
-      <a class="quick-link" href="https://www.chess.com/clubs/members/${encodeURIComponent(clubSlug)}" target="_blank" rel="noopener noreferrer">View members <span aria-hidden="true">›</span></a>
-      <a class="quick-link" href="https://www.chess.com/clubs/forum/${encodeURIComponent(clubSlug)}" target="_blank" rel="noopener noreferrer">Open forums <span aria-hidden="true">›</span></a>
-      <a class="quick-link" href="https://www.chess.com/clubs/882347/members/invite" target="_blank" rel="noopener noreferrer">Invite players <span aria-hidden="true">›</span></a>
-    </section>
+      <div class="section-title">${escapeHtml(title)}</div>
+      <div class="members-list" id="membersList">
+        <div class="member-item loading">
+          <div class="skeleton-avatar"></div>
+          <div class="member-info">
+            <div class="skeleton-name"></div>
+            <div class="skeleton-meta"></div>
+          </div>
+        </div>
+        <div class="member-item loading">
+          <div class="skeleton-avatar"></div>
+          <div class="member-info">
+            <div class="skeleton-name"></div>
+            <div class="skeleton-meta"></div>
+          </div>
+        </div>
+        <div class="member-item loading">
+          <div class="skeleton-avatar"></div>
+          <div class="member-info">
+            <div class="skeleton-name"></div>
+            <div class="skeleton-meta"></div>
+          </div>
+        </div>
+      </div>
 
-    <div class="callout">
-      Tip: active members get noticed. Play, post, solve puzzles, and help the club grow.
-    </div>
-
-    <div class="footer">
-      Updated ${escapeHtml(updatedAt)}. Source: ${escapeHtml(sourceLabel)}.
-      <div class="refresh-timer" data-refresh-timer data-last-updated="${escapeHtml(updatedAtIso)}">
-        Refreshes about every 5 minutes.
+      <div class="footer">
+        Live from Chess.com public data.
+        <div class="refresh-meta" id="refreshMeta">Refreshing members now.</div>
       </div>
     </div>
-  </main>
+  </div>
+
   <script>
-    const timerNode = document.querySelector("[data-refresh-timer]");
-
-    if (timerNode) {
-      const updatedAtValue = timerNode.getAttribute("data-last-updated");
-      const updatedAtMs = Date.parse(updatedAtValue || "");
-      const refreshIntervalMs = 5 * 60 * 1000;
-      let reloadScheduled = false;
-
-      const reloadWithCacheBust = () => {
-        if (reloadScheduled) return;
-        reloadScheduled = true;
-
-        const url = new URL(window.location.href);
-        url.searchParams.set("refresh", String(Date.now()));
-        window.location.replace(url.toString());
+    (function () {
+      const CLUB = {
+        slug: ${JSON.stringify(clubSlug)},
+        name: ${JSON.stringify(clubName)},
+        title: ${JSON.stringify(title)},
+        count: ${JSON.stringify(Number(count))},
+        apiBaseUrl: "https://api.chess.com/pub"
       };
 
-      const renderTimer = () => {
-        if (!Number.isFinite(updatedAtMs)) {
-          timerNode.textContent = "Refreshes about every 5 minutes.";
+      const urlParams = new URLSearchParams(window.location.search);
+      const clubSlug = (urlParams.get("club") || CLUB.slug).trim();
+      const apiBaseUrl = CLUB.apiBaseUrl;
+      const defaultAvatar = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72"><rect width="72" height="72" rx="36" fill="#fce8e0"/><path d="M27 48h18l-3-10c3-2 5-5 5-9 0-7-5-13-11-13s-11 6-11 13c0 4 2 7 5 9l-3 10z" fill="#d93020"/></svg>'
+      );
+
+      const membersList = document.getElementById("membersList");
+      const memberCountNode = document.getElementById("memberCount");
+      const refreshMeta = document.getElementById("refreshMeta");
+      let lastLoadAt = 0;
+      let timer = 0;
+      const refreshIntervalMs = 60000;
+
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text == null ? "" : String(text);
+        return div.innerHTML;
+      }
+
+      function timeAgo(timestamp) {
+        const diffSeconds = Math.max(0, Math.floor((Date.now() - (timestamp * 1000)) / 1000));
+        if (diffSeconds < 60) return diffSeconds + "s ago";
+        const minutes = Math.floor(diffSeconds / 60);
+        if (minutes < 60) return minutes + "m ago";
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return hours + "h ago";
+        const days = Math.floor(hours / 24);
+        if (days < 7) return days + "d ago";
+        const weeks = Math.floor(days / 7);
+        if (weeks < 4) return weeks + "w ago";
+        const months = Math.floor(days / 30);
+        return months + "mo ago";
+      }
+
+      function showLoading() {
+        membersList.innerHTML = [
+          '<div class="member-item loading"><div class="skeleton-avatar"></div><div class="member-info"><div class="skeleton-name"></div><div class="skeleton-meta"></div></div></div>',
+          '<div class="member-item loading"><div class="skeleton-avatar"></div><div class="member-info"><div class="skeleton-name"></div><div class="skeleton-meta"></div></div></div>',
+          '<div class="member-item loading"><div class="skeleton-avatar"></div><div class="member-info"><div class="skeleton-name"></div><div class="skeleton-meta"></div></div></div>'
+        ].join("");
+      }
+
+      function showError(message) {
+        membersList.innerHTML =
+          '<div class="member-error">' +
+            '<div class="error-icon">⚠️</div>' +
+            '<div class="error-message">' + escapeHtml(message) + '</div>' +
+            '<button class="retry-button" onclick="location.reload()">🔄 Retry</button>' +
+          '</div>';
+      }
+
+      function showEmpty() {
+        membersList.innerHTML =
+          '<div class="member-empty">' +
+            '<div class="empty-icon">♞</div>' +
+            '<div class="empty-message">No new members yet</div>' +
+          '</div>';
+      }
+
+      function dedupeMembers(payload) {
+        const buckets = []
+          .concat(payload && payload.weekly ? payload.weekly : [])
+          .concat(payload && payload.monthly ? payload.monthly : [])
+          .concat(payload && payload.all_time ? payload.all_time : []);
+        const byUsername = new Map();
+
+        buckets.forEach(function (member) {
+          const username = String(member && member.username ? member.username : "").trim();
+          const joined = Number(member && member.joined ? member.joined : 0);
+          if (!username || !joined) return;
+
+          const existing = byUsername.get(username);
+          if (!existing || joined > existing.joined) {
+            byUsername.set(username, { username: username, joined: joined });
+          }
+        });
+
+        return Array.from(byUsername.values()).sort(function (a, b) {
+          return b.joined - a.joined;
+        });
+      }
+
+      function renderTimer() {
+        if (!lastLoadAt) {
+          refreshMeta.textContent = "Refreshing members now.";
           return;
         }
 
-        const nextRefreshMs = updatedAtMs + refreshIntervalMs;
-        const remainingMs = nextRefreshMs - Date.now();
-
+        const nextRefreshAt = lastLoadAt + refreshIntervalMs;
+        const remainingMs = nextRefreshAt - Date.now();
         if (remainingMs <= 0) {
-          timerNode.textContent = "Refreshing now for the newest data.";
-          window.setTimeout(reloadWithCacheBust, 1500);
+          refreshMeta.textContent = "Refreshing members now.";
           return;
         }
 
         const totalSeconds = Math.ceil(remainingMs / 1000);
         const minutes = Math.floor(totalSeconds / 60);
         const seconds = totalSeconds % 60;
-        timerNode.textContent = "Next refresh window in " + minutes + ":" + String(seconds).padStart(2, "0") + ".";
-      };
+        refreshMeta.textContent = "Next refresh in " + minutes + ":" + String(seconds).padStart(2, "0") + ".";
+      }
 
-      renderTimer();
-      window.setInterval(renderTimer, 1000);
-    }
+      async function loadMembers() {
+        showLoading();
+        renderTimer();
+        lastLoadAt = Date.now();
+
+        try {
+          const response = await fetch(apiBaseUrl + "/club/" + encodeURIComponent(clubSlug) + "/members");
+          if (!response.ok) {
+            throw new Error("HTTP " + response.status);
+          }
+
+          const data = await response.json();
+          const allMembers = dedupeMembers(data);
+          const topMembers = allMembers.slice(0, CLUB.count);
+
+          memberCountNode.textContent = String(allMembers.length);
+
+          if (!topMembers.length) {
+            showEmpty();
+            return;
+          }
+
+          const enrichedMembers = await Promise.all(topMembers.map(async function (member) {
+            try {
+              const [playerResponse, statsResponse] = await Promise.all([
+                fetch(apiBaseUrl + "/player/" + encodeURIComponent(member.username)),
+                fetch(apiBaseUrl + "/player/" + encodeURIComponent(member.username) + "/stats")
+              ]);
+
+              const playerData = playerResponse.ok ? await playerResponse.json() : {};
+              const statsData = statsResponse.ok ? await statsResponse.json() : {};
+
+              const ratings = [
+                { type: "Rapid", value: statsData.chess_rapid && statsData.chess_rapid.last ? statsData.chess_rapid.last.rating : undefined },
+                { type: "Blitz", value: statsData.chess_blitz && statsData.chess_blitz.last ? statsData.chess_blitz.last.rating : undefined },
+                { type: "Bullet", value: statsData.chess_bullet && statsData.chess_bullet.last ? statsData.chess_bullet.last.rating : undefined }
+              ].filter(function (rating) {
+                return rating.value !== undefined;
+              });
+
+              const best = ratings.length ? ratings.sort(function (a, b) { return b.value - a.value; })[0] : { type: "—", value: "—" };
+
+              return {
+                username: member.username,
+                avatar: playerData.avatar || "",
+                ratingType: best.type,
+                ratingValue: best.value,
+                joined: member.joined
+              };
+            } catch (error) {
+              return {
+                username: member.username,
+                avatar: "",
+                ratingType: "—",
+                ratingValue: "—",
+                joined: member.joined
+              };
+            }
+          }));
+
+          membersList.innerHTML = enrichedMembers.map(function (member, index) {
+            const initials = member.username.replace(/[^a-z0-9]+/gi, " ").trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(function (part) {
+              return part.charAt(0).toUpperCase();
+            }).join("") || "C";
+            const avatarMarkup = member.avatar
+              ? '<img class="member-avatar" src="' + escapeHtml(member.avatar) + '" alt="' + escapeHtml(member.username) + ' avatar" onerror="this.onerror=null;this.src=&quot;' + defaultAvatar + '&quot;">'
+              : '<div class="avatar-fallback" aria-hidden="true">' + escapeHtml(initials) + '</div>';
+            const positionLabel = index === 0 ? "Newest join" : "#" + (index + 1) + " newest join";
+
+            return (
+              '<a class="member-item" href="https://www.chess.com/member/' + encodeURIComponent(member.username) + '" target="_blank" rel="noopener noreferrer">' +
+                avatarMarkup +
+                '<div class="member-info">' +
+                  '<div class="member-name">' + escapeHtml(member.username) + '</div>' +
+                  '<div class="member-meta">' +
+                    '<span class="member-rating">' + escapeHtml(member.ratingType) + ': ' + escapeHtml(String(member.ratingValue)) + '</span>' +
+                    '<span class="member-joined">' + escapeHtml(timeAgo(member.joined)) + '</span>' +
+                  '</div>' +
+                '</div>' +
+              '</a>'
+            );
+          }).join("");
+        } catch (error) {
+          console.error("Error loading members:", error);
+          if (String(error && error.message ? error.message : error).includes("403") || String(error && error.message ? error.message : error).includes("HTTP 403")) {
+            showError("Club is private. Make it public to display members.");
+          } else if (String(error && error.message ? error.message : error).includes("404") || String(error && error.message ? error.message : error).includes("HTTP 404")) {
+            showError("Club not found. Check the club name.");
+          } else {
+            showError("Failed to load members. Please try again.");
+          }
+        }
+      }
+
+      loadMembers();
+      timer = window.setInterval(function () {
+        renderTimer();
+      }, 1000);
+      window.setInterval(loadMembers, refreshIntervalMs);
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+          renderTimer();
+        });
+      }
+    })();
   </script>
 </body>
-</html>`;
+</html>
+`;
 }
 
 async function main() {
@@ -878,18 +752,8 @@ async function main() {
     throw new Error("clubSlug is missing in club.config.json");
   }
 
-  const { members, sourceLabel } = await loadNewestMembers(config);
-  const enrichedMembers = await Promise.all(members.map(enrichMember));
-
-  const html = renderPage({
-    title: config.title,
-    clubSlug: config.clubSlug,
-    members: enrichedMembers,
-    sourceLabel
-  });
-
   await mkdir(OUTPUT_DIR, { recursive: true });
-  await writeFile(OUTPUT_PATH, html, "utf8");
+  await writeFile(OUTPUT_PATH, renderPage(config), "utf8");
   console.log(`Wrote ${OUTPUT_PATH}`);
 }
 

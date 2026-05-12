@@ -21,8 +21,6 @@ jobs:
           node-version: "24"
 
       - name: Build widget
-        env:
-          CHESS_COOKIE: ${{ secrets.CHESS_COOKIE }}
         run: npm run build
 
       - name: Commit generated HTML
