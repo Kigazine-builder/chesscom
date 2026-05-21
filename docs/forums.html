@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="A simple, kid-safe club forum board. Posts are stored only on your device."
+      content="A simple, kid-safe club forum board. Demo posts are session-only (not saved)."
     />
-    <title>Club Forums (Local-Only)</title>
+    <title>Club Forums (Session Demo)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -298,7 +298,7 @@
           <div class="badge" aria-hidden="true">♟</div>
           <div>
             <h1>Club Forums</h1>
-            <div class="sub">Local-only practice board (no accounts, no uploads)</div>
+            <div class="sub">Session demo (no accounts, no uploads, no saving)</div>
           </div>
         </div>
         <nav aria-label="Site">
@@ -311,7 +311,7 @@
         <div class="rules" role="note" aria-label="Safety note">
           <strong>Safety first</strong>
           <p>
-            This forum is a <em>demo</em>. Posts save only in your browser using <code>localStorage</code>.
+            This forum is a <em>demo</em>. Posts are kept only while this page is open (refresh clears them).
             Don’t share real names, phone numbers, addresses, school info, or passwords.
           </p>
         </div>
@@ -347,7 +347,7 @@
           </div>
           <div class="btnbar">
             <button class="primary" type="submit">Post</button>
-            <button class="ghost" type="button" id="clearAll">Clear all posts (this device)</button>
+            <button class="ghost" type="button" id="clearAll">Clear all posts</button>
           </div>
         </form>
 
@@ -366,7 +366,6 @@
 
     <script>
       (function () {
-        const STORE_KEY = "chesscom_forums_posts_v1";
         const MAX_TITLE = 60;
         const MAX_BODY = 500;
         const MAX_POSTS = 60;
@@ -382,20 +381,6 @@
 
         function nowIso() {
           return new Date().toISOString();
-        }
-
-        function load() {
-          try {
-            const raw = localStorage.getItem(STORE_KEY);
-            const parsed = raw ? JSON.parse(raw) : [];
-            return Array.isArray(parsed) ? parsed : [];
-          } catch {
-            return [];
-          }
-        }
-
-        function save(posts) {
-          localStorage.setItem(STORE_KEY, JSON.stringify(posts));
         }
 
         function clampText(s, max) {
@@ -471,25 +456,23 @@
         function addPost(posts, next) {
           posts.unshift(next);
           if (posts.length > MAX_POSTS) posts.length = MAX_POSTS;
-          save(posts);
           render(posts);
         }
 
         function removePost(posts, id) {
           const next = posts.filter((p) => p.id !== id);
-          save(next);
           render(next);
           return next;
         }
 
         function toggleFlag(posts, id) {
           const next = posts.map((p) => (p.id === id ? { ...p, flagged: !p.flagged } : p));
-          save(next);
           render(next);
           return next;
         }
 
-        let posts = load();
+        // Session-only demo: nothing is saved to disk; refreshing the page clears posts.
+        let posts = [];
         render(posts);
         updateCharMeta();
 
@@ -547,13 +530,11 @@
         });
 
         clearAllBtn.addEventListener("click", () => {
-          if (!confirm("Clear all forum posts on this device?")) return;
+          if (!confirm("Clear all forum posts on this page?")) return;
           posts = [];
-          save(posts);
           render(posts);
         });
       })();
     </script>
   </body>
 </html>
-
