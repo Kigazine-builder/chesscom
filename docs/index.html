@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Void Masters - Chess.com Club Members Widget" />
+  <meta name="description" content="InfinitLegend - Chess.com Club Members Widget" />
   <title>InfinitLegend - Chess.com Widget</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -423,7 +423,7 @@
   <div class="nc-wrapper">
     <div class="sec-label">
       <div class="dot"></div>
-      <span>Void Masters/span>
+      <span>InfinitLegend HQ</span>
     </div>
 
     <div class="members-box">
@@ -444,10 +444,9 @@
       </div>
 
       <div class="quick-actions">
-        <a class="quick-action" href="https://www.chess.com/club/void-masters-official" target="_blank" rel="noopener noreferrer">Club page <span aria-hidden="true">›</span></a>
-        <a class="quick-action" href="https://www.chess.com/clubs/members/void-masters-official" target="_blank" rel="noopener noreferrer">Members page <span aria-hidden="true">›</span></a>
-        <a class="quick-action" href="https://www.chess.com/clubs/about/void-masters-official" target="_blank" rel="noopener noreferrer">About club <span aria-hidden="true">›</span></a>
-        <a class="quick-action" href="./forums.html">Void Masters Blog <span aria-hidden="true">›</span></a>
+        <a class="quick-action" href="https://www.chess.com/club/infinitlegend" target="_blank" rel="noopener noreferrer">Club page <span aria-hidden="true">›</span></a>
+        <a class="quick-action" href="https://www.chess.com/clubs/members/infinitlegend" target="_blank" rel="noopener noreferrer">Members page <span aria-hidden="true">›</span></a>
+        <a class="quick-action" href="https://www.chess.com/clubs/about/infinitlegend" target="_blank" rel="noopener noreferrer">About club <span aria-hidden="true">›</span></a>
       </div>
 
       <div class="section-title">Newest Members</div>
@@ -485,8 +484,8 @@
   <script>
     (function () {
       const CLUB = {
-        slug: "void-masters-official",
-        name: "Void Masters",
+        slug: "infinitlegend",
+        name: "InfinitLegend",
         title: "Newest Members",
         count: 3,
         apiBaseUrl: "https://api.chess.com/pub"
@@ -504,10 +503,7 @@
       const refreshMeta = document.getElementById("refreshMeta");
       let lastLoadAt = 0;
       let timer = 0;
-      // UI updates every second, but network refresh stays slower to avoid hammering the API.
-      const uiTickMs = 1000;
       const refreshIntervalMs = 60000;
-      let lastMembers = [];
 
       function escapeHtml(text) {
         const div = document.createElement("div");
@@ -597,32 +593,6 @@
         refreshMeta.textContent = "Next refresh in " + minutes + ":" + String(seconds).padStart(2, "0") + ".";
       }
 
-      function renderMembersFromCache() {
-        if (!lastMembers.length) return;
-
-        membersList.innerHTML = lastMembers.map(function (member, index) {
-          const initials = member.username.replace(/[^a-z0-9]+/gi, " ").trim().split(/\s+/).filter(Boolean).slice(0, 2).map(function (part) {
-            return part.charAt(0).toUpperCase();
-          }).join("") || "C";
-          const avatarMarkup = member.avatar
-            ? '<img class="member-avatar" src="' + escapeHtml(member.avatar) + '" alt="' + escapeHtml(member.username) + ' avatar" onerror="this.onerror=null;this.src=&quot;' + defaultAvatar + '&quot;">'
-            : '<div class="avatar-fallback" aria-hidden="true">' + escapeHtml(initials) + '</div>';
-
-          return (
-            '<a class="member-item" href="https://www.chess.com/member/' + encodeURIComponent(member.username) + '" target="_blank" rel="noopener noreferrer">' +
-              avatarMarkup +
-              '<div class="member-info">' +
-                '<div class="member-name">' + escapeHtml(member.username) + '</div>' +
-                '<div class="member-meta">' +
-                  '<span class="member-rating">' + escapeHtml(member.ratingType) + ': ' + escapeHtml(String(member.ratingValue)) + '</span>' +
-                  '<span class="member-joined">' + escapeHtml(timeAgo(member.joined)) + '</span>' +
-                '</div>' +
-              '</div>' +
-            '</a>'
-          );
-        }).join("");
-      }
-
       async function loadMembers() {
         showLoading();
         renderTimer();
@@ -683,8 +653,28 @@
             }
           }));
 
-          lastMembers = enrichedMembers;
-          renderMembersFromCache();
+          membersList.innerHTML = enrichedMembers.map(function (member, index) {
+            const initials = member.username.replace(/[^a-z0-9]+/gi, " ").trim().split(/\s+/).filter(Boolean).slice(0, 2).map(function (part) {
+              return part.charAt(0).toUpperCase();
+            }).join("") || "C";
+            const avatarMarkup = member.avatar
+              ? '<img class="member-avatar" src="' + escapeHtml(member.avatar) + '" alt="' + escapeHtml(member.username) + ' avatar" onerror="this.onerror=null;this.src=&quot;' + defaultAvatar + '&quot;">'
+              : '<div class="avatar-fallback" aria-hidden="true">' + escapeHtml(initials) + '</div>';
+            const positionLabel = index === 0 ? "Newest join" : "#" + (index + 1) + " newest join";
+
+            return (
+              '<a class="member-item" href="https://www.chess.com/member/' + encodeURIComponent(member.username) + '" target="_blank" rel="noopener noreferrer">' +
+                avatarMarkup +
+                '<div class="member-info">' +
+                  '<div class="member-name">' + escapeHtml(member.username) + '</div>' +
+                  '<div class="member-meta">' +
+                    '<span class="member-rating">' + escapeHtml(member.ratingType) + ': ' + escapeHtml(String(member.ratingValue)) + '</span>' +
+                    '<span class="member-joined">' + escapeHtml(timeAgo(member.joined)) + '</span>' +
+                  '</div>' +
+                '</div>' +
+              '</a>'
+            );
+          }).join("");
         } catch (error) {
           console.error("Error loading members:", error);
           if (String(error && error.message ? error.message : error).includes("403") || String(error && error.message ? error.message : error).includes("HTTP 403")) {
@@ -700,8 +690,7 @@
       loadMembers();
       timer = window.setInterval(function () {
         renderTimer();
-        renderMembersFromCache();
-      }, uiTickMs);
+      }, 1000);
       window.setInterval(loadMembers, refreshIntervalMs);
 
       if (document.readyState === "loading") {
