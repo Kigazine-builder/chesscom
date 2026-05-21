@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="A simple, kid-safe club forum board. Demo posts are session-only (not saved)."
+      content="Void Masters Official blog updates. Static page: no accounts, no posting, no tracking."
     />
-    <title>Club Forums (Session Demo)</title>
+    <title>Void Masters Blog</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,278 +16,255 @@
     />
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
+
       :root {
-        --bg: #fff5f0;
-        --panel: #ffffff;
-        --panel-soft: #fff8f5;
-        --border: #f5c5b8;
-        --ink: #c73520;
-        --ink-soft: #9a2010;
-        --accent: #d93020;
-        --accent-2: #e85535;
-        --muted: rgba(154, 32, 16, 0.72);
-        --good: #1b8f5a;
+        --bg: #0b0f14;
+        --panel: rgba(255, 255, 255, 0.06);
+        --panel-2: rgba(255, 255, 255, 0.035);
+        --border: rgba(255, 255, 255, 0.12);
+        --ink: rgba(245, 248, 255, 0.92);
+        --muted: rgba(245, 248, 255, 0.72);
+        --accent: #7af0ff;
+        --accent2: #c6ff7a;
+        --danger: #ff6b6b;
+        --shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
       }
 
       body {
-        font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background:
-          radial-gradient(circle at top, rgba(217, 48, 32, 0.08), transparent 30%),
-          linear-gradient(180deg, #fffaf7, var(--bg));
+        font-family: "Nunito", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         min-height: 100vh;
-        padding: 12px;
         color: var(--ink);
+        padding: 14px;
         display: flex;
         justify-content: center;
         align-items: flex-start;
+        background:
+          radial-gradient(900px 600px at 10% 15%, rgba(122, 240, 255, 0.14), transparent 60%),
+          radial-gradient(900px 600px at 90% 12%, rgba(198, 255, 122, 0.10), transparent 60%),
+          radial-gradient(1100px 800px at 60% 90%, rgba(255, 107, 107, 0.07), transparent 60%),
+          linear-gradient(180deg, #070a0f, var(--bg));
       }
 
       a { color: inherit; }
 
       .wrap {
         width: 100%;
-        max-width: 680px;
-        background: var(--bg);
-        border-radius: 18px;
+        max-width: 860px;
+        border-radius: 22px;
         padding: 12px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+        border: 1px solid rgba(255,255,255,0.07);
+        box-shadow: var(--shadow);
       }
 
       header {
         display: flex;
-        align-items: center;
         justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 10px;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 18px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        margin-bottom: 12px;
       }
 
       .brand {
         display: flex;
+        gap: 12px;
         align-items: center;
-        gap: 10px;
+        min-width: 0;
       }
 
-      .badge {
-        width: 34px;
-        height: 34px;
-        border-radius: 12px;
-        border: 2px solid var(--border);
-        background: linear-gradient(135deg, rgba(217,48,32,.12), rgba(232,85,53,.06));
+      .sigil {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        background:
+          radial-gradient(circle at 30% 25%, rgba(122,240,255,0.85), rgba(122,240,255,0.05) 60%),
+          radial-gradient(circle at 70% 75%, rgba(198,255,122,0.6), rgba(198,255,122,0.02) 60%),
+          rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.16);
         display: grid;
         place-items: center;
+        flex-shrink: 0;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .sigil::after {
+        content: "";
+        position: absolute;
+        inset: -40%;
+        background: conic-gradient(from 120deg, rgba(122,240,255,.0), rgba(122,240,255,.25), rgba(198,255,122,.0));
+        filter: blur(14px);
+        transform: rotate(18deg);
+        opacity: 0.7;
+      }
+
+      .sigil span {
+        position: relative;
+        z-index: 1;
         font-family: "Fredoka One", cursive;
-        color: var(--accent);
+        letter-spacing: 0.02em;
+        color: rgba(10, 14, 20, 0.95);
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        padding: 6px 9px;
+        border-radius: 999px;
+        font-size: 12px;
       }
 
       .brand h1 {
         font-family: "Fredoka One", cursive;
-        font-size: 16px;
-        letter-spacing: 0.01em;
+        font-size: 18px;
+        letter-spacing: 0.02em;
+        line-height: 1.1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
-      .sub {
-        font-size: 11px;
+      .brand p {
+        margin-top: 4px;
+        font-size: 12px;
         font-weight: 800;
         color: var(--muted);
+        line-height: 1.35;
       }
 
       nav {
         display: flex;
-        gap: 8px;
         flex-wrap: wrap;
+        gap: 8px;
         justify-content: flex-end;
       }
 
       .navlink {
         text-decoration: none;
-        border: 2px solid var(--border);
-        background: var(--panel);
-        border-radius: 999px;
-        padding: 8px 10px;
-        font-weight: 900;
         font-size: 12px;
-        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+        font-weight: 1000;
+        border-radius: 999px;
+        padding: 10px 12px;
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(255,255,255,0.04);
+        transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
       }
-      .navlink:hover { transform: translateY(-1px); border-color: var(--accent); box-shadow: 0 3px 0 var(--accent); }
-      .navlink[aria-current="page"] { border-color: var(--accent); }
+      .navlink:hover { transform: translateY(-1px); border-color: rgba(122,240,255,0.55); box-shadow: 0 8px 30px rgba(122,240,255,0.12); }
+      .navlink[aria-current="page"] { border-color: rgba(198,255,122,0.6); }
 
-      .panel {
+      .grid {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr;
+        gap: 12px;
+      }
+
+      @media (max-width: 860px) {
+        .grid { grid-template-columns: 1fr; }
+        header { flex-direction: column; }
+        nav { justify-content: flex-start; }
+      }
+
+      .card {
         background: var(--panel);
-        border: 2px solid var(--border);
+        border: 1px solid var(--border);
         border-radius: 18px;
         padding: 12px;
-        box-shadow: 0 8px 24px rgba(217, 48, 32, 0.08);
       }
 
-      .rules {
-        border-radius: 14px;
-        background: linear-gradient(135deg, rgba(27,143,90,0.08), transparent 65%);
-        border: 1px solid rgba(245, 197, 184, 0.85);
-        padding: 10px;
-        margin-bottom: 12px;
-      }
-
-      .rules strong { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
-      .rules p { margin-top: 6px; font-size: 12px; line-height: 1.45; color: var(--muted); font-weight: 800; }
-      .rules code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 11px; }
-
-      .compose {
-        display: grid;
-        gap: 8px;
-        margin-bottom: 12px;
-      }
-
-      label { font-size: 12px; font-weight: 900; color: var(--ink-soft); }
-      input, textarea, select {
-        width: 100%;
-        border: 2px solid var(--border);
-        border-radius: 14px;
-        padding: 10px 12px;
-        font: inherit;
-        background: var(--panel-soft);
-        color: var(--ink);
-      }
-      textarea { resize: vertical; min-height: 92px; }
-      input:focus, textarea:focus, select:focus { outline: 3px solid rgba(217,48,32,0.18); border-color: var(--accent); }
-
-      .row {
-        display: grid;
-        grid-template-columns: 1.1fr 0.9fr;
-        gap: 8px;
-      }
-      @media (max-width: 560px) { .row { grid-template-columns: 1fr; } header { align-items: flex-start; flex-direction: column; } nav { justify-content: flex-start; } }
-
-      .btnbar { display: flex; gap: 8px; flex-wrap: wrap; }
-
-      button {
-        border: 0;
-        border-radius: 999px;
-        padding: 10px 14px;
-        font-weight: 900;
-        cursor: pointer;
-        font-family: inherit;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-      }
-      .primary {
-        background: linear-gradient(135deg, var(--accent), var(--accent-2));
-        color: #fff;
-        box-shadow: 0 4px 0 #8c1a10;
-      }
-      .primary:hover { transform: translateY(-2px); box-shadow: 0 6px 0 #8c1a10; }
-      .primary:active { transform: translateY(2px); box-shadow: 0 2px 0 #8c1a10; }
-
-      .ghost {
-        background: var(--panel);
-        border: 2px solid var(--border);
-        color: var(--ink);
-      }
-      .ghost:hover { transform: translateY(-1px); box-shadow: 0 3px 0 var(--accent); border-color: var(--accent); }
-
-      .tiny {
-        padding: 8px 10px;
-        font-size: 12px;
-      }
-
-      .listhead {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        gap: 8px;
-        margin: 6px 0 10px;
-      }
-      .listhead h2 {
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        font-weight: 900;
-      }
-      .meta {
+      .label {
         font-size: 11px;
-        font-weight: 900;
-        color: var(--muted);
+        font-weight: 1000;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: rgba(245,248,255,0.78);
+        margin-bottom: 10px;
       }
 
       .post {
-        border: 2px solid var(--border);
-        border-radius: 16px;
-        background: var(--panel-soft);
-        padding: 10px;
-        display: grid;
-        gap: 6px;
-        margin-bottom: 8px;
+        border-radius: 18px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03));
+        padding: 12px;
+        margin-bottom: 10px;
+        overflow: hidden;
       }
 
-      .posttop {
+      .post h2 {
+        font-size: 16px;
+        font-weight: 1000;
+        line-height: 1.2;
+        margin-bottom: 6px;
+      }
+
+      .meta {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
+        flex-wrap: wrap;
         gap: 8px;
+        align-items: center;
+        margin-bottom: 10px;
       }
 
-      .tag {
+      .pill {
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        padding: 6px 10px;
         border-radius: 999px;
-        padding: 4px 10px;
         font-size: 11px;
-        font-weight: 900;
-        border: 2px solid rgba(245, 197, 184, 0.95);
-        background: #fff;
+        font-weight: 1000;
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(0,0,0,0.22);
+        color: rgba(245,248,255,0.84);
       }
 
-      .title {
-        font-size: 13px;
-        font-weight: 1000;
-        color: var(--ink);
-        line-height: 1.25;
+      .pill.accent {
+        border-color: rgba(122,240,255,0.45);
+        background: rgba(122,240,255,0.09);
       }
-      .body {
-        font-size: 12px;
-        line-height: 1.5;
-        color: rgba(154, 32, 16, 0.88);
+
+      .pill.good {
+        border-color: rgba(198,255,122,0.45);
+        background: rgba(198,255,122,0.09);
+      }
+
+      .content {
+        font-size: 13px;
+        line-height: 1.6;
+        color: rgba(245,248,255,0.84);
         white-space: pre-wrap;
         word-break: break-word;
       }
 
-      .postactions {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
+      .content strong { color: rgba(245,248,255,0.95); }
+      .content code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+        padding: 1px 6px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(0,0,0,0.22);
       }
 
-      .notice {
-        margin-top: 10px;
-        font-size: 11px;
-        color: var(--muted);
-        font-weight: 900;
-        border-top: 1px solid rgba(245, 197, 184, 0.8);
-        padding-top: 10px;
+      .aside ul { list-style: none; display: grid; gap: 8px; }
+      .aside li {
+        padding: 10px 10px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(0,0,0,0.18);
+      }
+      .aside b { display: block; font-size: 12px; font-weight: 1000; margin-bottom: 4px; }
+      .aside span { display: block; font-size: 12px; font-weight: 850; color: rgba(245,248,255,0.76); line-height: 1.4; }
+
+      .footer {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(0,0,0,0.18);
+        color: rgba(245,248,255,0.74);
+        font-size: 12px;
+        font-weight: 850;
         line-height: 1.45;
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .navlink, button { transition: none; }
-      }
-
-      @media (prefers-color-scheme: dark) {
-        body {
-          background:
-            radial-gradient(circle at top, rgba(255, 138, 128, 0.08), transparent 30%),
-            linear-gradient(180deg, #1f1b1a, #111111);
-          color: #ffd5cf;
-        }
-        :root {
-          --bg: #252525;
-          --panel: #2d2d2d;
-          --panel-soft: #2d2d2d;
-          --border: #4a4a4a;
-          --ink: #ff8a80;
-          --ink-soft: #ffab91;
-          --accent: #e8553a;
-          --accent-2: #f26c4f;
-          --muted: rgba(255, 171, 145, 0.8);
-        }
-        .tag { background: #2a2524; border-color: #4a4a4a; }
       }
     </style>
   </head>
@@ -295,107 +272,77 @@
     <main class="wrap">
       <header>
         <div class="brand">
-          <div class="badge" aria-hidden="true">♟</div>
-          <div>
-            <h1>Club Forums</h1>
-            <div class="sub">Session demo (no accounts, no uploads, no saving)</div>
+          <div class="sigil" aria-hidden="true"><span>VM</span></div>
+          <div style="min-width: 0;">
+            <h1>Void Masters Official Blog</h1>
+            <p>Static updates page. No sign-in. No posting. No storage.</p>
           </div>
         </div>
         <nav aria-label="Site">
           <a class="navlink" href="./index.html">Home</a>
-          <a class="navlink" href="./forums.html" aria-current="page">Forums</a>
+          <a class="navlink" href="./forums.html" aria-current="page">Blog</a>
         </nav>
       </header>
 
-      <section class="panel" aria-labelledby="composeTitle">
-        <div class="rules" role="note" aria-label="Safety note">
-          <strong>Safety first</strong>
-          <p>
-            This forum is a <em>demo</em>. Posts are kept only while this page is open (refresh clears them).
-            Don’t share real names, phone numbers, addresses, school info, or passwords.
-          </p>
+      <section class="grid">
+        <div class="card" aria-labelledby="postsLabel">
+          <div class="label" id="postsLabel">Latest Updates</div>
+          <div id="posts"></div>
         </div>
 
-        <h2 id="composeTitle" class="meta" style="margin-bottom: 8px;">Start a new post</h2>
-        <form class="compose" id="postForm" autocomplete="off" novalidate>
-          <div class="row">
-            <div>
-              <label for="title">Title</label>
-              <input id="title" name="title" maxlength="60" required placeholder="Example: Tournament ideas?" />
-            </div>
-            <div>
-              <label for="topic">Topic</label>
-              <select id="topic" name="topic">
-                <option value="announcements">Announcements</option>
-                <option value="training">Training</option>
-                <option value="tournaments">Tournaments</option>
-                <option value="puzzles">Puzzles</option>
-                <option value="help">Help</option>
-              </select>
-            </div>
+        <aside class="card aside" aria-labelledby="aboutLabel">
+          <div class="label" id="aboutLabel">About</div>
+          <ul>
+            <li>
+              <b>What this is</b>
+              <span>A simple blog page you can edit in one file for your club.</span>
+            </li>
+            <li>
+              <b>Privacy</b>
+              <span>No accounts, no chat, no uploads, no database, no tracking.</span>
+            </li>
+            <li>
+              <b>How to edit</b>
+              <span>Open <code>docs/forums.html</code> and edit the <code>POSTS</code> list.</span>
+            </li>
+          </ul>
+          <div class="footer" role="note" aria-label="Safety note">
+            Keep posts kind and kid-friendly. Don’t share real names, phone numbers, addresses, school info, or passwords.
           </div>
-          <div>
-            <label for="body">Message</label>
-            <textarea
-              id="body"
-              name="body"
-              maxlength="500"
-              required
-              placeholder="Keep it friendly. No personal info."
-            ></textarea>
-            <div class="meta" id="charMeta" aria-live="polite" style="margin-top: 6px;">0 / 500</div>
-          </div>
-          <div class="btnbar">
-            <button class="primary" type="submit">Post</button>
-            <button class="ghost" type="button" id="clearAll">Clear all posts</button>
-          </div>
-        </form>
-
-        <div class="listhead" style="margin-top: 14px;">
-          <h2>Posts</h2>
-          <div class="meta" id="countMeta">0 posts</div>
-        </div>
-        <div id="posts" aria-live="polite" aria-label="Forum posts"></div>
-
-        <div class="notice">
-          Tip: if you want a real online forum, you’ll need sign-in and moderation tools. For a kids’ space,
-          keep privacy-first defaults and use human moderation.
-        </div>
+        </aside>
       </section>
     </main>
 
     <script>
       (function () {
-        const MAX_TITLE = 60;
-        const MAX_BODY = 500;
-        const MAX_POSTS = 60;
-
-        const form = document.getElementById("postForm");
-        const titleEl = document.getElementById("title");
-        const topicEl = document.getElementById("topic");
-        const bodyEl = document.getElementById("body");
-        const postsEl = document.getElementById("posts");
-        const countMeta = document.getElementById("countMeta");
-        const charMeta = document.getElementById("charMeta");
-        const clearAllBtn = document.getElementById("clearAll");
-
-        function nowIso() {
-          return new Date().toISOString();
-        }
-
-        function clampText(s, max) {
-          const text = (s == null ? "" : String(s)).trim();
-          return text.length > max ? text.slice(0, max) : text;
-        }
-
-        // Very basic privacy guardrail: block obvious personal-info patterns.
-        function looksLikePersonalInfo(text) {
-          const t = String(text || "");
-          const hasEmail = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(t);
-          const hasPhone = /(\+?\d[\d\s().-]{7,}\d)/.test(t);
-          const hasPasswordWord = /\bpassword\b|\bpasscode\b/i.test(t);
-          return hasEmail || hasPhone || hasPasswordWord;
-        }
+        // Edit these posts. Newest first.
+        const POSTS = [
+          {
+            title: "Welcome to Void Masters Official",
+            date: "2026-05-21",
+            tag: "Announcement",
+            mood: "good",
+            body:
+              "This is our club blog.\n\n" +
+              "What we’ll post here:\n" +
+              "- Tournaments we’re joining\n" +
+              "- Training challenges\n" +
+              "- Puzzle of the week\n\n" +
+              "Rule: be respectful and keep personal info private."
+          },
+          {
+            title: "Training Challenge: The 30-Second Scan",
+            date: "2026-05-21",
+            tag: "Training",
+            mood: "accent",
+            body:
+              "Before every move, do a quick scan:\n" +
+              "1) Checks (for both sides)\n" +
+              "2) Captures\n" +
+              "3) Threats\n\n" +
+              "Try it for 5 games and see if you blunder less."
+          }
+        ];
 
         function escapeHtml(text) {
           const div = document.createElement("div");
@@ -403,138 +350,33 @@
           return div.innerHTML;
         }
 
-        function formatTopic(topic) {
-          switch (topic) {
-            case "announcements": return "Announcements";
-            case "training": return "Training";
-            case "tournaments": return "Tournaments";
-            case "puzzles": return "Puzzles";
-            case "help": return "Help";
-            default: return "Post";
-          }
+        function formatDate(iso) {
+          const d = new Date(iso + "T00:00:00");
+          if (Number.isNaN(d.getTime())) return iso;
+          return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
         }
 
-        function render(posts) {
-          countMeta.textContent = posts.length + (posts.length === 1 ? " post" : " posts");
-          if (posts.length === 0) {
-            postsEl.innerHTML =
-              '<div class="meta" style="padding: 10px 2px;">No posts yet. Be the first (and keep it kind).</div>';
-            return;
-          }
+        const postsEl = document.getElementById("posts");
+        postsEl.innerHTML = POSTS.map((p) => {
+          const title = escapeHtml(p.title);
+          const date = escapeHtml(formatDate(p.date));
+          const tag = escapeHtml(p.tag || "Update");
+          const body = escapeHtml(p.body || "");
+          const mood = p.mood === "good" ? "good" : (p.mood === "accent" ? "accent" : "");
 
-          postsEl.innerHTML = posts
-            .map((p) => {
-              const title = escapeHtml(p.title);
-              const body = escapeHtml(p.body);
-              const topic = escapeHtml(formatTopic(p.topic));
-              const created = escapeHtml(new Date(p.createdAt).toLocaleString());
-              const flagged = !!p.flagged;
-
-              return (
-                '<article class="post" data-id="' + escapeHtml(p.id) + '">' +
-                  '<div class="posttop">' +
-                    '<div class="tag" aria-label="Topic">' + topic + '</div>' +
-                    '<div class="meta">' + created + (flagged ? ' • <span style="color:var(--accent);">Flagged</span>' : "") + '</div>' +
-                  '</div>' +
-                  '<div class="title">' + title + '</div>' +
-                  '<div class="body">' + body + '</div>' +
-                  '<div class="postactions">' +
-                    '<button class="ghost tiny" type="button" data-action="flag">' + (flagged ? "Unflag" : "Report") + '</button>' +
-                    '<button class="ghost tiny" type="button" data-action="delete">Delete (this device)</button>' +
-                  '</div>' +
-                '</article>'
-              );
-            })
-            .join("");
-        }
-
-        function updateCharMeta() {
-          const n = (bodyEl.value || "").length;
-          charMeta.textContent = n + " / " + MAX_BODY;
-        }
-
-        function addPost(posts, next) {
-          posts.unshift(next);
-          if (posts.length > MAX_POSTS) posts.length = MAX_POSTS;
-          render(posts);
-        }
-
-        function removePost(posts, id) {
-          const next = posts.filter((p) => p.id !== id);
-          render(next);
-          return next;
-        }
-
-        function toggleFlag(posts, id) {
-          const next = posts.map((p) => (p.id === id ? { ...p, flagged: !p.flagged } : p));
-          render(next);
-          return next;
-        }
-
-        // Session-only demo: nothing is saved to disk; refreshing the page clears posts.
-        let posts = [];
-        render(posts);
-        updateCharMeta();
-
-        bodyEl.addEventListener("input", updateCharMeta);
-
-        form.addEventListener("submit", (e) => {
-          e.preventDefault();
-
-          const title = clampText(titleEl.value, MAX_TITLE);
-          const body = clampText(bodyEl.value, MAX_BODY);
-          const topic = String(topicEl.value || "help");
-
-          if (!title || !body) {
-            alert("Please add a title and a message.");
-            return;
-          }
-
-          if (looksLikePersonalInfo(title + "\n" + body)) {
-            alert("Please remove personal info (emails, phone numbers, or passwords) and try again.");
-            return;
-          }
-
-          const next = {
-            id: crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + "_" + Math.random().toString(16).slice(2),
-            title,
-            body,
-            topic,
-            createdAt: nowIso(),
-            flagged: false
-          };
-
-          addPost(posts, next);
-          titleEl.value = "";
-          bodyEl.value = "";
-          updateCharMeta();
-          titleEl.focus();
-        });
-
-        postsEl.addEventListener("click", (e) => {
-          const btn = e.target && e.target.closest && e.target.closest("button[data-action]");
-          if (!btn) return;
-          const postNode = btn.closest("article[data-id]");
-          if (!postNode) return;
-          const id = postNode.getAttribute("data-id");
-          const action = btn.getAttribute("data-action");
-
-          if (action === "delete") {
-            if (!confirm("Delete this post from this device?")) return;
-            posts = removePost(posts, id);
-            return;
-          }
-          if (action === "flag") {
-            posts = toggleFlag(posts, id);
-          }
-        });
-
-        clearAllBtn.addEventListener("click", () => {
-          if (!confirm("Clear all forum posts on this page?")) return;
-          posts = [];
-          render(posts);
-        });
+          return (
+            '<article class="post">' +
+              '<h2>' + title + '</h2>' +
+              '<div class="meta">' +
+                '<span class="pill ' + mood + '">' + tag + '</span>' +
+                '<span class="pill">📅 ' + date + '</span>' +
+              '</div>' +
+              '<div class="content">' + body + '</div>' +
+            '</article>'
+          );
+        }).join("");
       })();
     </script>
   </body>
 </html>
+
