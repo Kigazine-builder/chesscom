@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A simple, kid-safe club forum board. Posts are stored only on your device."
+    />
+    <title>Club Forums (Local-Only)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      :root {
+        --bg: #fff5f0;
+        --panel: #ffffff;
+        --panel-soft: #fff8f5;
+        --border: #f5c5b8;
+        --ink: #c73520;
+        --ink-soft: #9a2010;
+        --accent: #d93020;
+        --accent-2: #e85535;
+        --muted: rgba(154, 32, 16, 0.72);
+        --good: #1b8f5a;
+      }
+
+      body {
+        font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background:
+          radial-gradient(circle at top, rgba(217, 48, 32, 0.08), transparent 30%),
+          linear-gradient(180deg, #fffaf7, var(--bg));
+        min-height: 100vh;
+        padding: 12px;
+        color: var(--ink);
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+      }
+
+      a { color: inherit; }
+
+      .wrap {
+        width: 100%;
+        max-width: 680px;
+        background: var(--bg);
+        border-radius: 18px;
+        padding: 12px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .badge {
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
+        border: 2px solid var(--border);
+        background: linear-gradient(135deg, rgba(217,48,32,.12), rgba(232,85,53,.06));
+        display: grid;
+        place-items: center;
+        font-family: "Fredoka One", cursive;
+        color: var(--accent);
+      }
+
+      .brand h1 {
+        font-family: "Fredoka One", cursive;
+        font-size: 16px;
+        letter-spacing: 0.01em;
+      }
+
+      .sub {
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--muted);
+      }
+
+      nav {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .navlink {
+        text-decoration: none;
+        border: 2px solid var(--border);
+        background: var(--panel);
+        border-radius: 999px;
+        padding: 8px 10px;
+        font-weight: 900;
+        font-size: 12px;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      }
+      .navlink:hover { transform: translateY(-1px); border-color: var(--accent); box-shadow: 0 3px 0 var(--accent); }
+      .navlink[aria-current="page"] { border-color: var(--accent); }
+
+      .panel {
+        background: var(--panel);
+        border: 2px solid var(--border);
+        border-radius: 18px;
+        padding: 12px;
+        box-shadow: 0 8px 24px rgba(217, 48, 32, 0.08);
+      }
+
+      .rules {
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(27,143,90,0.08), transparent 65%);
+        border: 1px solid rgba(245, 197, 184, 0.85);
+        padding: 10px;
+        margin-bottom: 12px;
+      }
+
+      .rules strong { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+      .rules p { margin-top: 6px; font-size: 12px; line-height: 1.45; color: var(--muted); font-weight: 800; }
+      .rules code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 11px; }
+
+      .compose {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      label { font-size: 12px; font-weight: 900; color: var(--ink-soft); }
+      input, textarea, select {
+        width: 100%;
+        border: 2px solid var(--border);
+        border-radius: 14px;
+        padding: 10px 12px;
+        font: inherit;
+        background: var(--panel-soft);
+        color: var(--ink);
+      }
+      textarea { resize: vertical; min-height: 92px; }
+      input:focus, textarea:focus, select:focus { outline: 3px solid rgba(217,48,32,0.18); border-color: var(--accent); }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 8px;
+      }
+      @media (max-width: 560px) { .row { grid-template-columns: 1fr; } header { align-items: flex-start; flex-direction: column; } nav { justify-content: flex-start; } }
+
+      .btnbar { display: flex; gap: 8px; flex-wrap: wrap; }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-weight: 900;
+        cursor: pointer;
+        font-family: inherit;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      .primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #fff;
+        box-shadow: 0 4px 0 #8c1a10;
+      }
+      .primary:hover { transform: translateY(-2px); box-shadow: 0 6px 0 #8c1a10; }
+      .primary:active { transform: translateY(2px); box-shadow: 0 2px 0 #8c1a10; }
+
+      .ghost {
+        background: var(--panel);
+        border: 2px solid var(--border);
+        color: var(--ink);
+      }
+      .ghost:hover { transform: translateY(-1px); box-shadow: 0 3px 0 var(--accent); border-color: var(--accent); }
+
+      .tiny {
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+
+      .listhead {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 6px 0 10px;
+      }
+      .listhead h2 {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 900;
+      }
+      .meta {
+        font-size: 11px;
+        font-weight: 900;
+        color: var(--muted);
+      }
+
+      .post {
+        border: 2px solid var(--border);
+        border-radius: 16px;
+        background: var(--panel-soft);
+        padding: 10px;
+        display: grid;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+
+      .posttop {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 900;
+        border: 2px solid rgba(245, 197, 184, 0.95);
+        background: #fff;
+      }
+
+      .title {
+        font-size: 13px;
+        font-weight: 1000;
+        color: var(--ink);
+        line-height: 1.25;
+      }
+      .body {
+        font-size: 12px;
+        line-height: 1.5;
+        color: rgba(154, 32, 16, 0.88);
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .postactions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .notice {
+        margin-top: 10px;
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 900;
+        border-top: 1px solid rgba(245, 197, 184, 0.8);
+        padding-top: 10px;
+        line-height: 1.45;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .navlink, button { transition: none; }
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background:
+            radial-gradient(circle at top, rgba(255, 138, 128, 0.08), transparent 30%),
+            linear-gradient(180deg, #1f1b1a, #111111);
+          color: #ffd5cf;
+        }
+        :root {
+          --bg: #252525;
+          --panel: #2d2d2d;
+          --panel-soft: #2d2d2d;
+          --border: #4a4a4a;
+          --ink: #ff8a80;
+          --ink-soft: #ffab91;
+          --accent: #e8553a;
+          --accent-2: #f26c4f;
+          --muted: rgba(255, 171, 145, 0.8);
+        }
+        .tag { background: #2a2524; border-color: #4a4a4a; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <header>
+        <div class="brand">
+          <div class="badge" aria-hidden="true">♟</div>
+          <div>
+            <h1>Club Forums</h1>
+            <div class="sub">Local-only practice board (no accounts, no uploads)</div>
+          </div>
+        </div>
+        <nav aria-label="Site">
+          <a class="navlink" href="./index.html">Home</a>
+          <a class="navlink" href="./forums.html" aria-current="page">Forums</a>
+        </nav>
+      </header>
+
+      <section class="panel" aria-labelledby="composeTitle">
+        <div class="rules" role="note" aria-label="Safety note">
+          <strong>Safety first</strong>
+          <p>
+            This forum is a <em>demo</em>. Posts save only in your browser using <code>localStorage</code>.
+            Don’t share real names, phone numbers, addresses, school info, or passwords.
+          </p>
+        </div>
+
+        <h2 id="composeTitle" class="meta" style="margin-bottom: 8px;">Start a new post</h2>
+        <form class="compose" id="postForm" autocomplete="off" novalidate>
+          <div class="row">
+            <div>
+              <label for="title">Title</label>
+              <input id="title" name="title" maxlength="60" required placeholder="Example: Tournament ideas?" />
+            </div>
+            <div>
+              <label for="topic">Topic</label>
+              <select id="topic" name="topic">
+                <option value="announcements">Announcements</option>
+                <option value="training">Training</option>
+                <option value="tournaments">Tournaments</option>
+                <option value="puzzles">Puzzles</option>
+                <option value="help">Help</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label for="body">Message</label>
+            <textarea
+              id="body"
+              name="body"
+              maxlength="500"
+              required
+              placeholder="Keep it friendly. No personal info."
+            ></textarea>
+            <div class="meta" id="charMeta" aria-live="polite" style="margin-top: 6px;">0 / 500</div>
+          </div>
+          <div class="btnbar">
+            <button class="primary" type="submit">Post</button>
+            <button class="ghost" type="button" id="clearAll">Clear all posts (this device)</button>
+          </div>
+        </form>
+
+        <div class="listhead" style="margin-top: 14px;">
+          <h2>Posts</h2>
+          <div class="meta" id="countMeta">0 posts</div>
+        </div>
+        <div id="posts" aria-live="polite" aria-label="Forum posts"></div>
+
+        <div class="notice">
+          Tip: if you want a real online forum, you’ll need sign-in and moderation tools. For a kids’ space,
+          keep privacy-first defaults and use human moderation.
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        const STORE_KEY = "chesscom_forums_posts_v1";
+        const MAX_TITLE = 60;
+        const MAX_BODY = 500;
+        const MAX_POSTS = 60;
+
+        const form = document.getElementById("postForm");
+        const titleEl = document.getElementById("title");
+        const topicEl = document.getElementById("topic");
+        const bodyEl = document.getElementById("body");
+        const postsEl = document.getElementById("posts");
+        const countMeta = document.getElementById("countMeta");
+        const charMeta = document.getElementById("charMeta");
+        const clearAllBtn = document.getElementById("clearAll");
+
+        function nowIso() {
+          return new Date().toISOString();
+        }
+
+        function load() {
+          try {
+            const raw = localStorage.getItem(STORE_KEY);
+            const parsed = raw ? JSON.parse(raw) : [];
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        }
+
+        function save(posts) {
+          localStorage.setItem(STORE_KEY, JSON.stringify(posts));
+        }
+
+        function clampText(s, max) {
+          const text = (s == null ? "" : String(s)).trim();
+          return text.length > max ? text.slice(0, max) : text;
+        }
+
+        // Very basic privacy guardrail: block obvious personal-info patterns.
+        function looksLikePersonalInfo(text) {
+          const t = String(text || "");
+          const hasEmail = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(t);
+          const hasPhone = /(\+?\d[\d\s().-]{7,}\d)/.test(t);
+          const hasPasswordWord = /\bpassword\b|\bpasscode\b/i.test(t);
+          return hasEmail || hasPhone || hasPasswordWord;
+        }
+
+        function escapeHtml(text) {
+          const div = document.createElement("div");
+          div.textContent = text == null ? "" : String(text);
+          return div.innerHTML;
+        }
+
+        function formatTopic(topic) {
+          switch (topic) {
+            case "announcements": return "Announcements";
+            case "training": return "Training";
+            case "tournaments": return "Tournaments";
+            case "puzzles": return "Puzzles";
+            case "help": return "Help";
+            default: return "Post";
+          }
+        }
+
+        function render(posts) {
+          countMeta.textContent = posts.length + (posts.length === 1 ? " post" : " posts");
+          if (posts.length === 0) {
+            postsEl.innerHTML =
+              '<div class="meta" style="padding: 10px 2px;">No posts yet. Be the first (and keep it kind).</div>';
+            return;
+          }
+
+          postsEl.innerHTML = posts
+            .map((p) => {
+              const title = escapeHtml(p.title);
+              const body = escapeHtml(p.body);
+              const topic = escapeHtml(formatTopic(p.topic));
+              const created = escapeHtml(new Date(p.createdAt).toLocaleString());
+              const flagged = !!p.flagged;
+
+              return (
+                '<article class="post" data-id="' + escapeHtml(p.id) + '">' +
+                  '<div class="posttop">' +
+                    '<div class="tag" aria-label="Topic">' + topic + '</div>' +
+                    '<div class="meta">' + created + (flagged ? ' • <span style="color:var(--accent);">Flagged</span>' : "") + '</div>' +
+                  '</div>' +
+                  '<div class="title">' + title + '</div>' +
+                  '<div class="body">' + body + '</div>' +
+                  '<div class="postactions">' +
+                    '<button class="ghost tiny" type="button" data-action="flag">' + (flagged ? "Unflag" : "Report") + '</button>' +
+                    '<button class="ghost tiny" type="button" data-action="delete">Delete (this device)</button>' +
+                  '</div>' +
+                '</article>'
+              );
+            })
+            .join("");
+        }
+
+        function updateCharMeta() {
+          const n = (bodyEl.value || "").length;
+          charMeta.textContent = n + " / " + MAX_BODY;
+        }
+
+        function addPost(posts, next) {
+          posts.unshift(next);
+          if (posts.length > MAX_POSTS) posts.length = MAX_POSTS;
+          save(posts);
+          render(posts);
+        }
+
+        function removePost(posts, id) {
+          const next = posts.filter((p) => p.id !== id);
+          save(next);
+          render(next);
+          return next;
+        }
+
+        function toggleFlag(posts, id) {
+          const next = posts.map((p) => (p.id === id ? { ...p, flagged: !p.flagged } : p));
+          save(next);
+          render(next);
+          return next;
+        }
+
+        let posts = load();
+        render(posts);
+        updateCharMeta();
+
+        bodyEl.addEventListener("input", updateCharMeta);
+
+        form.addEventListener("submit", (e) => {
+          e.preventDefault();
+
+          const title = clampText(titleEl.value, MAX_TITLE);
+          const body = clampText(bodyEl.value, MAX_BODY);
+          const topic = String(topicEl.value || "help");
+
+          if (!title || !body) {
+            alert("Please add a title and a message.");
+            return;
+          }
+
+          if (looksLikePersonalInfo(title + "\n" + body)) {
+            alert("Please remove personal info (emails, phone numbers, or passwords) and try again.");
+            return;
+          }
+
+          const next = {
+            id: crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + "_" + Math.random().toString(16).slice(2),
+            title,
+            body,
+            topic,
+            createdAt: nowIso(),
+            flagged: false
+          };
+
+          addPost(posts, next);
+          titleEl.value = "";
+          bodyEl.value = "";
+          updateCharMeta();
+          titleEl.focus();
+        });
+
+        postsEl.addEventListener("click", (e) => {
+          const btn = e.target && e.target.closest && e.target.closest("button[data-action]");
+          if (!btn) return;
+          const postNode = btn.closest("article[data-id]");
+          if (!postNode) return;
+          const id = postNode.getAttribute("data-id");
+          const action = btn.getAttribute("data-action");
+
+          if (action === "delete") {
+            if (!confirm("Delete this post from this device?")) return;
+            posts = removePost(posts, id);
+            return;
+          }
+          if (action === "flag") {
+            posts = toggleFlag(posts, id);
+          }
+        });
+
+        clearAllBtn.addEventListener("click", () => {
+          if (!confirm("Clear all forum posts on this device?")) return;
+          posts = [];
+          save(posts);
+          render(posts);
+        });
+      })();
+    </script>
+  </body>
+</html>
+
