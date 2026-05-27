@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Void Masters Official join announcements" />
+  <title>Void Masters Announcements</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #fff7f3;
+      --panel: #ffffff;
+      --panel-soft: #fff1ec;
+      --border: #f3c4b7;
+      --ink: #ba2f1f;
+      --ink-soft: #8f1d12;
+      --accent: #d73522;
+      --accent-2: #eb6a48;
+      --muted: rgba(143, 29, 18, 0.72);
+    }
+
+    body {
+      font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(215, 53, 34, 0.08), transparent 30%),
+        linear-gradient(180deg, #fffdfb, var(--bg));
+      min-height: 100vh;
+      color: var(--ink);
+      padding: 12px;
+    }
+
+    .layout {
+      width: 100%;
+      max-width: 980px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 12px;
+    }
+
+    .sidebar,
+    .main {
+      background: var(--panel);
+      border: 2px solid var(--border);
+      border-radius: 18px;
+      padding: 12px;
+      box-shadow: 0 8px 24px rgba(215, 53, 34, 0.08);
+    }
+
+    .title {
+      font-family: "Fredoka One", cursive;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .card {
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 10px;
+      background: var(--panel-soft);
+      margin-bottom: 10px;
+    }
+
+    .card h2 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+
+    .card p {
+      font-size: 13px;
+      line-height: 1.4;
+      font-weight: 800;
+      color: var(--ink-soft);
+    }
+
+    .shoutout {
+      font-size: 14px;
+      line-height: 1.45;
+      font-weight: 900;
+      color: var(--ink);
+    }
+
+    .actions {
+      display: grid;
+      gap: 8px;
+    }
+
+    .action {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      text-decoration: none;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: #fff;
+      transition: all 0.15s ease;
+    }
+
+    .action:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+      box-shadow: 0 4px 0 var(--accent);
+    }
+
+    .timeline {
+      display: grid;
+      gap: 8px;
+    }
+
+    .entry {
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 10px;
+      background: var(--panel-soft);
+    }
+
+    .entry strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+
+    .entry span {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .empty {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+      padding: 10px;
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .meta {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(243, 196, 183, 0.9);
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .action { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Sidebar">
+      <div class="title">Club Sidebar</div>
+      <div class="sub">Auto shoutout for the newest join.</div>
+
+      <div class="card">
+        <h2>Live Shoutout</h2>
+        <p class="shoutout" id="sidebarShoutout">Checking newest member...</p>
+      </div>
+
+      <div class="actions">
+        <a class="action" href="./index.html">Members widget <span aria-hidden="true">›</span></a>
+        <a class="action" href="./forums.html">Void Masters Blog <span aria-hidden="true">›</span></a>
+        <a class="action" href="https://www.chess.com/club/void-masters-official" target="_blank" rel="noopener noreferrer">Club page <span aria-hidden="true">›</span></a>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="title">Join Announcements</div>
+      <div class="sub">Shows newest joins from Chess.com public club data.</div>
+
+      <div class="timeline" id="announcementList">
+        <div class="empty">Loading latest announcements...</div>
+      </div>
+
+      <div class="meta" id="refreshMeta">Refreshing now.</div>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      const CLUB_SLUG = "void-masters-official";
+      const CLUB_NAME = "Void Masters Official";
+      const API_BASE_URL = "https://api.chess.com/pub";
+      const VISIBLE_COUNT = 8;
+      const REFRESH_INTERVAL_MS = 60000;
+
+      const shoutoutNode = document.getElementById("sidebarShoutout");
+      const listNode = document.getElementById("announcementList");
+      const refreshMeta = document.getElementById("refreshMeta");
+      let lastLoadAt = 0;
+
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text == null ? "" : String(text);
+        return div.innerHTML;
+      }
+
+      function timeAgo(unixSeconds) {
+        const diffSeconds = Math.max(0, Math.floor((Date.now() - (Number(unixSeconds) * 1000)) / 1000));
+        if (diffSeconds < 60) return diffSeconds + "s ago";
+        const minutes = Math.floor(diffSeconds / 60);
+        if (minutes < 60) return minutes + "m ago";
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return hours + "h ago";
+        const days = Math.floor(hours / 24);
+        return days + "d ago";
+      }
+
+      function dedupeMembers(payload) {
+        const buckets = []
+          .concat(payload && payload.weekly ? payload.weekly : [])
+          .concat(payload && payload.monthly ? payload.monthly : [])
+          .concat(payload && payload.all_time ? payload.all_time : []);
+
+        const byUsername = new Map();
+        buckets.forEach(function (member) {
+          const username = String(member && member.username ? member.username : "").trim();
+          const joined = Number(member && member.joined ? member.joined : 0);
+          if (!username || !joined) return;
+
+          const existing = byUsername.get(username);
+          if (!existing || joined > existing.joined) {
+            byUsername.set(username, { username: username, joined: joined });
+          }
+        });
+
+        return Array.from(byUsername.values()).sort(function (a, b) {
+          return b.joined - a.joined;
+        });
+      }
+
+      function renderRefreshMeta() {
+        if (!lastLoadAt) {
+          refreshMeta.textContent = "Refreshing now.";
+          return;
+        }
+        const nextRefreshAt = lastLoadAt + REFRESH_INTERVAL_MS;
+        const remainingMs = nextRefreshAt - Date.now();
+        if (remainingMs <= 0) {
+          refreshMeta.textContent = "Refreshing now.";
+          return;
+        }
+        const seconds = Math.ceil(remainingMs / 1000);
+        refreshMeta.textContent = "Next refresh in " + seconds + "s.";
+      }
+
+      function renderMembers(members) {
+        if (!members.length) {
+          shoutoutNode.textContent = "No members found yet.";
+          listNode.innerHTML = '<div class="empty">No join records available right now.</div>';
+          return;
+        }
+
+        const newest = members[0];
+        shoutoutNode.textContent = "Shoutout to " + newest.username + " who joined " + CLUB_NAME + "!";
+
+        const visibleMembers = members.slice(0, VISIBLE_COUNT);
+        listNode.innerHTML = visibleMembers.map(function (member) {
+          return (
+            '<article class="entry">' +
+              '<strong>Shoutout to ' + escapeHtml(member.username) + ' who joined ' + escapeHtml(CLUB_NAME) + '!</strong>' +
+              '<span>Joined ' + escapeHtml(timeAgo(member.joined)) + '</span>' +
+            '</article>'
+          );
+        }).join("");
+      }
+
+      function showError(message) {
+        shoutoutNode.textContent = message;
+        listNode.innerHTML = '<div class="empty">' + escapeHtml(message) + '</div>';
+      }
+
+      async function loadAnnouncements() {
+        lastLoadAt = Date.now();
+        renderRefreshMeta();
+
+        try {
+          const response = await fetch(API_BASE_URL + "/club/" + encodeURIComponent(CLUB_SLUG) + "/members");
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          const data = await response.json();
+          renderMembers(dedupeMembers(data));
+        } catch (error) {
+          const msg = String(error && error.message ? error.message : error);
+          if (msg.includes("403")) {
+            showError("Club is private. Public members are required.");
+          } else if (msg.includes("404")) {
+            showError("Club not found. Check club slug.");
+          } else {
+            showError("Could not load announcements right now.");
+          }
+        }
+      }
+
+      loadAnnouncements();
+      window.setInterval(loadAnnouncements, REFRESH_INTERVAL_MS);
+      window.setInterval(renderRefreshMeta, 1000);
+    })();
+  </script>
+</body>
+</html>
