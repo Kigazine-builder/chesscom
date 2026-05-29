@@ -100,6 +100,18 @@
       color: var(--muted);
     }
 
+    .club-shoutout {
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(217, 48, 32, 0.1), rgba(232, 85, 53, 0.05));
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--ink-soft);
+      font-weight: 800;
+    }
+
     .stats {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -423,13 +435,17 @@
   <div class="nc-wrapper">
     <div class="sec-label">
       <div class="dot"></div>
-      <span>InfinitLegend HQ</span>
+      <span>Void Masters HQ</span>
     </div>
 
     <div class="members-box">
       <div class="club-mission">
         <h2>Club Mission</h2>
         <p>Stay active, invite good players, join events, and keep the club legendary.</p>
+      </div>
+
+      <div class="club-shoutout" id="clubShoutout">
+        Shoutout loading...
       </div>
 
       <div class="stats">
@@ -501,6 +517,7 @@
       const membersList = document.getElementById("membersList");
       const memberCountNode = document.getElementById("memberCount");
       const refreshMeta = document.getElementById("refreshMeta");
+      const clubShoutout = document.getElementById("clubShoutout");
       let lastLoadAt = 0;
       let timer = 0;
       const refreshIntervalMs = 60000;
@@ -611,9 +628,12 @@
           memberCountNode.textContent = String(allMembers.length);
 
           if (!topMembers.length) {
+            clubShoutout.textContent = "No new members to shout out yet.";
             showEmpty();
             return;
           }
+
+          clubShoutout.textContent = "Shoutout to " + topMembers[0].username + " who joined " + CLUB.name + "!";
 
           const enrichedMembers = await Promise.all(topMembers.map(async function (member) {
             try {
